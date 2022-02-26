@@ -47,6 +47,8 @@ int main(int argc, char const *argv[]) {
          cout << "Testando o .erase(): " << aux << endl;
      }
     
+
+    
     file.close();
 
     return 0;
