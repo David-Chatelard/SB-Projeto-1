@@ -8,7 +8,7 @@ LOAD N
 FAT:         SUB 						ONE
 JMPZ 				FIM
 STORE 			AUX
-MUL                                          N
+MULT                                          N
 STORE N
 LOAD AUX 
 JMP FAT
