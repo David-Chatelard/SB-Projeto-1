@@ -93,9 +93,10 @@ auto get_tokens(string line) {
     // !!!Fazer os corner case para caso tenha varios ';' na linha!!!
 
     stringstream ss_no_comments_line(no_comments_line); //transforma em stream
-    // stringstream ss_no_comments_line_aux(no_comments_line); //TESTE
+    // stringstream ss_no_comments_line_aux(no_comments_line);          //TESTE
 
     // Pega o rotulo
+    // TEM QUE FAZER PARA O CASO DE TER A DECLARAÇÃO DO RÓTULO E DEPOIS UMA QUEBRA DE LINHA PARA O RESTO
     if (no_comments_line.find(':') != string::npos){ // se tiver rotulo
         getline(ss_no_comments_line, label, ':'); //bota tudo que vem antes de ':' em label
         // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
@@ -139,9 +140,10 @@ auto get_tokens(string line) {
 
     // Pega arg2, caso seja COPY
     if (opcode == "COPY") {
-        ss_no_comments_line >> arg2;
+        // FAZER A VERIFICAÇÃO SE TEM SOMENTE UMA ',' E SOMENTE UM ' ' ENTRE OS ARGUMENTOS
+        ss_no_comments_line >> arg2; // pega a virgula
         // cout << "virgula arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
-        ss_no_comments_line >> arg2;
+        ss_no_comments_line >> arg2; // pega o argumento em si
         // cout << "arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
     }
 
@@ -167,9 +169,9 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
         found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
 
         if (found_symbol) { // se o rotulo ja existe
-            // erro de rotulo ja definido, talvez tenha que passar a tabela de erros pra essa funcao
+            // erro de rotulo ja definido
             error_item.label = tokens[0];
-            error_item.message = "Erro SINTATICO/SEMANTICO VERIFICAR QUAL EH DEPOIS E ARRUMAR AQUI";
+            error_item.message = "Erro SINTATICO/SEMANTICO VERIFICAR QUAL EH DEPOIS E ARRUMAR AQUI, rotulo repetido";
             error_item.line_number = *line_counter;
             errors_table.push_back(error_item);
         }
@@ -212,19 +214,19 @@ int main(int argc, char const *argv[]) {
 
     operations_table = begin_operations_table(); // inicializa a tabela de operacoes
 
-    //  while (getline(file, line)) {
-    //      cout << "Linha: " << line << endl;
-    //      stringstream ss_line(line);
-    //      getline(ss_line, no_comments_line, ';');
-    //      cout << "Linha sem comentarios: " << no_comments_line << endl;
-    //      cout << "Testando o .find(): " << no_comments_line.find('u') << endl;
-    //      cout << "Testando o .substr(): " << no_comments_line.substr(no_comments_line.find('u')) << endl;
-    //      aux = no_comments_line.substr(no_comments_line.find('u'));
-    //      aux.erase(0, 1);
-    //      cout << "Testando o .erase(): " << aux << endl;
-    //      ss_line >> ws >> aux2;
-    //      cout << "Testando o aux2: " << aux2 << endl;
-    //  }
+    //  while (getline(file, line)) {                                                                           //TESTE
+    //      cout << "Linha: " << line << endl;                                                                  //TESTE
+    //      stringstream ss_line(line);                                                                         //TESTE
+    //      getline(ss_line, no_comments_line, ';');                                                            //TESTE
+    //      cout << "Linha sem comentarios: " << no_comments_line << endl;                                      //TESTE
+    //      cout << "Testando o .find(): " << no_comments_line.find('u') << endl;                               //TESTE
+    //      cout << "Testando o .substr(): " << no_comments_line.substr(no_comments_line.find('u')) << endl;    //TESTE
+    //      aux = no_comments_line.substr(no_comments_line.find('u'));                                          //TESTE
+    //      aux.erase(0, 1);                                                                                    //TESTE
+    //      cout << "Testando o .erase(): " << aux << endl;                                                     //TESTE
+    //      ss_line >> ws >> aux2;                                                                              //TESTE
+    //      cout << "Testando o aux2: " << aux2 << endl;                                                        //TESTE
+    //  }                                                                                                       //TESTE
 
     // Primeira passagem
      while (getline(file, line)){
