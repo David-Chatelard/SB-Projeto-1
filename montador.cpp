@@ -79,6 +79,14 @@ bool is_blank_line(string line) {
     return line.empty();
 }
 
+// Verifica se a linha eh a definicao de uma macro
+bool is_macro_definition(string line){
+    if (line.find("MACRO") != string::npos){ // se tiver a palavra MACRO
+        return true;
+    }
+    return false;
+}
+
 // Separa os tokens da linha
 auto get_tokens(string line) {
     vector <string> tokens;
@@ -135,13 +143,14 @@ auto get_tokens(string line) {
     if (opcode != "STOP") {
         ss_no_comments_line >> arg1;
         // cout << "arg1 >>-- '" << arg1 << "'"  << endl;   //TESTE
+        arg1.erase(remove(arg1.begin(), arg1.end(), ','), arg1.end()); //remove a virgula caso ela esteja colada no arg1
     }
 
 
     // Pega arg2, caso seja COPY
     if (opcode == "COPY") {
         // FAZER A VERIFICAÇÃO SE TEM SOMENTE UMA ',' E SOMENTE UM ' ' ENTRE OS ARGUMENTOS
-        ss_no_comments_line >> arg2; // pega a virgula
+        ss_no_comments_line >> arg2; // pega a virgula, caso tenha varios espacos entre o arg1 e a virgula
         // cout << "virgula arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
         ss_no_comments_line >> arg2; // pega o argumento em si
         // cout << "arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
@@ -155,6 +164,75 @@ auto get_tokens(string line) {
     return tokens;
 }
 
+
+// Adiciona os rotulos dos EQU na tabela de simbolos da passagem 0 e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
+tuple<vector <Item_symbols_table>, vector <Item_errors_table>> zero_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
+    bool found_symbol;
+    vector <Item_symbols_table>::iterator iter;
+    Item_symbols_table symbol_item;
+    Item_errors_table error_item;
+    string symbol;
+
+    // Procura rotulo
+    if (!tokens[0].empty()) { // possui rotulo
+        symbol = tokens[0];
+        iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+        found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+
+        if (found_symbol) { // Se o rotulo ja existe
+            // Erro de rotulo ja definido
+            error_item.label = tokens[0];
+            error_item.message = "Erro SEMANTICO, rotulo repetido";
+            error_item.line_number = *line_counter;
+            errors_table.push_back(error_item);
+        }
+        else{ //Rotulo nao existe
+            // Adiciona o simbolo na tabela
+            symbol_item.symbol = symbol;
+            symbol_item.address = stoi(tokens[2]);
+            symbols_table.push_back(symbol_item);
+        }
+    }
+    return {symbols_table, errors_table};
+}
+
+
+string write_label(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
+    int i;
+
+    if (!tokens[2].empty()) { // possui arg1
+        for (i = 0; i < symbols_table.size(); i++) {
+            if (symbols_table[i].symbol == tokens[2]) {
+                tokens[2] = to_string(symbols_table[i].address); // troca o rotulo pelo valor do rotulo
+            }
+        }
+    }
+
+    if (!tokens[3].empty()) { // possui arg2
+        for (i = 0; i < symbols_table.size(); i++) {
+            if (symbols_table[i].symbol == tokens[3]) {
+                tokens[3] = to_string(symbols_table[i].address); // troca o rotulo pelo valor do rotulo
+            }
+        }
+    }
+
+    if (tokens[0].empty()) { // linha sem rotulo
+        if (tokens[3].empty()){ // nao tem arg2
+            return tokens[1] + ' ' + tokens[2];
+        }
+        // tem arg2
+        return tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
+    }
+    else{ //linha com rotulo
+        if (tokens[3].empty()){ // nao tem arg2
+            return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2];
+        }
+        // tem arg2
+        return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
+    }
+}
+
+
 // Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
 tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
     bool found_symbol;
@@ -163,31 +241,28 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
     Item_errors_table error_item;
     string symbol;
 
+    // Procura rotulo
     if (!tokens[0].empty()) { // possui rotulo
         symbol = tokens[0];
         iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
         found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
 
-        if (found_symbol) { // se o rotulo ja existe
-            // erro de rotulo ja definido
+        if (found_symbol) { // Se o rotulo ja existe
+            // Erro de rotulo ja definido
             error_item.label = tokens[0];
-            error_item.message = "Erro SINTATICO/SEMANTICO VERIFICAR QUAL EH DEPOIS E ARRUMAR AQUI, rotulo repetido";
+            error_item.message = "Erro SEMANTICO, rotulo repetido";
             error_item.line_number = *line_counter;
             errors_table.push_back(error_item);
         }
-        else{ //rotulo nao existe
+        else{ //Rotulo nao existe
+            // Adiciona o simbolo na tabela
             symbol_item.symbol = symbol;
             symbol_item.address = *position_counter;
-            symbols_table.push_back(symbol_item); // adiciona o simbolo na tabela
+            symbols_table.push_back(symbol_item);
         }
-        
-
     }
-
-
     return {symbols_table, errors_table};
 }
-
 
 int main(int argc, char const *argv[]) {
     int j = 1;
@@ -195,20 +270,31 @@ int main(int argc, char const *argv[]) {
     int position_counter = 0;
     int line_counter = 1;
 
-    string file_name(argv[2]);
+    string file_name(argv[2]); // nome do codigo fonte a ser lido
     ifstream file(file_name);
-    string line, no_comments_line, label;
+
+    string file_name_after_pass_0("source_code_after_pass_0");
+    ofstream file_after_pass_0(file_name_after_pass_0); // codigo fonte depois da passada 0
+
+    string line;
+    // string no_comments_line, label;         //TESTE
 
     vector <string> tokens;
+    vector <Item_symbols_table> symbols_table_equ_if;
     vector <Item_symbols_table> symbols_table;
     vector <Item_errors_table> errors_table;
 
     map <string, Item_operations_table> operations_table;
 
-    string aux, aux2; //dos testes do começo, pode apagar depois
+    string aux, aux2;   //TESTE
 
     if (!file.is_open()){
         cout << "file not found." << endl;
+        return 1;
+    }
+
+    if (!file_after_pass_0.is_open()){
+        cout << "couldn't open file." << endl;
         return 1;
     }
 
@@ -228,8 +314,10 @@ int main(int argc, char const *argv[]) {
     //      cout << "Testando o aux2: " << aux2 << endl;                                                        //TESTE
     //  }                                                                                                       //TESTE
 
-    // Primeira passagem
-     while (getline(file, line)){
+    // Passagem 0
+    position_counter = 0;
+    line_counter = 1;
+    while (getline(file, line)){
         //  Ignora se for uma linha em branco
          if (is_blank_line(line)) {
             line_counter++;
@@ -239,14 +327,57 @@ int main(int argc, char const *argv[]) {
         for (int i = 0; i < line.length(); ++i){
 	 	    line[i] = toupper(line[i]);
 	    }
+        // Pre processar EQU e IF
+        tokens = get_tokens(line);
+        cout << "linha " << line_counter << ": --";               //TESTE
+        cout << "label: '" << tokens[0] << "' --";     //TESTE
+        cout << "opcode: '" << tokens[1] << "' --";    //TESTE
+        cout << "arg1: '" << tokens[2] << "' --";      //TESTE
+        cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
+        if (tokens[1] == "EQU") {
+            tie(symbols_table_equ_if, errors_table) = zero_pass_labels(tokens, operations_table, symbols_table_equ_if, errors_table, &position_counter, &line_counter);
+        }
+        else{
+            line = write_label(tokens, operations_table, symbols_table_equ_if, errors_table, &position_counter, &line_counter);
+            file_after_pass_0 << line << endl;
+        }
+
+        // Pre processar MACRO
+        // if (is_macro_definition(line)){    // se for definicao de uma macro
+        //     //vai pro fluxograma 2
+        // }
+        // else{                   //se não for definicao de uma macro
+        //     //
+        // }
+
+        line_counter++;
+    }
+
+    file_after_pass_0.close();
+
+    ifstream ifile_after_pass_0(file_name_after_pass_0);
+
+
+    // Primeira passagem
+    position_counter = 0;
+    line_counter = 1;
+    while (getline(ifile_after_pass_0, line)){
+        //  Ignora se for uma linha em branco
+        if (is_blank_line(line)) {
+            line_counter++;
+            continue;
+        }
+        // Passa tudo para uppercase, para não ser case sensitive
+        for (int i = 0; i < line.length(); ++i){
+	 	    line[i] = toupper(line[i]);
+	    }
         // Pega os tokens da linha
-         tokens = get_tokens(line);
-         cout << "linha " << j << ": --";               //TESTE
-         cout << "label: '" << tokens[0] << "' --";     //TESTE
-         cout << "opcode: '" << tokens[1] << "' --";    //TESTE
-         cout << "arg1: '" << tokens[2] << "' --";      //TESTE
-         cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
-         j++;                                           //TESTE
+        tokens = get_tokens(line);
+        cout << "linha " << line_counter << ": --";               //TESTE
+        cout << "label: '" << tokens[0] << "' --";     //TESTE
+        cout << "opcode: '" << tokens[1] << "' --";    //TESTE
+        cout << "arg1: '" << tokens[2] << "' --";      //TESTE
+        cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
 
         //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
         tie(symbols_table, errors_table) = first_pass_labels(tokens, operations_table, symbols_table, errors_table, &position_counter, &line_counter);
@@ -260,7 +391,8 @@ int main(int argc, char const *argv[]) {
         
         line_counter++;
 
-     }
+    }
+     
     cout << "Tabela de simbolos:------------------------" << endl;
     for (auto symbol_iter : symbols_table) {
         cout << "Simbolo: " << symbol_iter.symbol << " --- ";
@@ -274,7 +406,7 @@ int main(int argc, char const *argv[]) {
     }
 
     
-    file.close();
+    ifile_after_pass_0.close();
 
     return 0;
 }
