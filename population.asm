@@ -1,12 +1,21 @@
 FOn: EqU 2;ASDASDASD
 DALE      :       EQU        5    ;       ASDAWDQWEQWE
+mEc:eQu 10;asdasd
+if mec;asdasd
+LOaD FON   ;asdasdasd
 ADd FON
 SUB DALE;ASDSGERG
+iF EOq   ; asdasd asd
+loAD dale;asdasd
 COPY DALE, FON ; ASDADWEE
 
 L1: DIV DOIS; 42asd
 L2   : ADD A; 2fsdf
    L3: SUB B; 646x
+
+If foN ;asdasd
+
+div daLE    ; a   asdasd
 
 L2: MuLT G; 42asd
 
