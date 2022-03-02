@@ -42,7 +42,7 @@ public:
 class Item_symbols_table {
 public:
 	string symbol;
-	int address = -1; // endereco de memoria onde o simbolo esta, -1 caso não seja definido
+	int address = -1; // endereco de memoria onde o simbolo esta, -1 caso não seja definido, -2 caso seja rotulo de CONST ou SPACE(neste caso sera posto ao final do codigo e o valor -2 vai ser mudado para um endereco mesmo no final)
     bool used = false; // indica se o simbolo foi utilizado em algum lugar do codigo
     int line; // linha onde o simbolo foi declarado
 };
@@ -55,7 +55,7 @@ public:
 };
 
 
-
+// Funcao para inicializar a tabela de operacoes
 auto begin_operations_table(){
 	map <string, Item_operations_table> table;
 	table["ADD"].opcode = "01", table["ADD"].num_args = 1, table["ADD"].memory_space = 2;
@@ -158,7 +158,6 @@ auto get_tokens(string line) {
     return tokens;
 }
 
-
 // Adiciona os rotulos dos EQU na tabela de simbolos da passagem 0 e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
 tuple<vector <Item_symbols_table>, vector <Item_errors_table>> zero_pass_labels_equ(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
     bool found_symbol;
@@ -191,7 +190,7 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> zero_pass_labels_
     return {symbols_table, errors_table};
 }
 
-
+// Substitui os simbolos dos rotulos por seus valores
 tuple<string, vector <Item_symbols_table>> write_label(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
     int i;
 
@@ -229,6 +228,7 @@ tuple<string, vector <Item_symbols_table>> write_label(vector <string> tokens, m
     }
 }
 
+// Remove os espacos em branco desnecessarios da linha
 string format_line(vector <string> tokens){
     if (tokens[0].empty()) { // linha sem rotulo
         if (tokens[3].empty()){ // nao tem arg2
@@ -268,14 +268,40 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
             errors_table.push_back(error_item);
         }
         else{ //Rotulo nao existe
-            // Adiciona o simbolo na tabela
-            symbol_item.symbol = symbol;
-            symbol_item.address = *position_counter;
-            symbol_item.line = *line_counter;
-            symbols_table.push_back(symbol_item);
+            if (tokens[1] == "CONST" || tokens[1] == "SPACE") { //se for o rotulo de uma diretiva, o endeco sera resolvido no fim da primeira passagem, para ficar no final do codigo objeto
+                symbol_item.symbol = symbol;
+                symbol_item.address = -2; // o -2 significa que vai ter que resolver depois do STOP na primeira passada
+                symbol_item.line = *line_counter;
+                symbols_table.push_back(symbol_item);
+            }
+            else {
+                // Adiciona o simbolo na tabela
+                symbol_item.symbol = symbol;
+                symbol_item.address = *position_counter;
+                symbol_item.line = *line_counter;
+                symbols_table.push_back(symbol_item);
+            }
         }
     }
     return {symbols_table, errors_table};
+}
+
+// Atualiza o contador de posicao e a tabela de erros caso ocorra algum erro envolvendo as instrucoes ou diretivas
+vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
+    Item_errors_table error_item;
+    
+    if (operations_table.count(tokens[1])) { // se a operacao estiver na tabela de operacoes
+        *position_counter += operations_table.at(tokens[1]).memory_space;
+    }
+    else if (tokens[1] != "CONST" && tokens[1] != "SPACE") { // nao achou na tabela de operacoes e nao eh diretiva
+        // Erro de rotulo ja definido
+        error_item.label = tokens[1];
+        error_item.message = "Erro SINTATICO, operacao invalida";
+        error_item.line_number = *line_counter;
+        errors_table.push_back(error_item);
+    }
+
+    return errors_table;
 }
 
 int main(int argc, char const *argv[]) {
@@ -365,7 +391,7 @@ int main(int argc, char const *argv[]) {
         line_counter = 1;
         while (getline(file, line)){
             //  Ignora se for uma linha em branco
-            if (is_blank_line(line)) {
+            if (is_blank_line(line) || line == " ") {
                 line_counter++;
                 continue;
             }
@@ -413,7 +439,7 @@ int main(int argc, char const *argv[]) {
                 line_before_is_if = true;
                 getline(file, line); // Pega a linha seguinte ao IF
                 line_counter++;
-                if (is_blank_line(line)) {
+                if (is_blank_line(line) || line == " ") {
                     line_counter++;
                     continue;
                 }
@@ -472,7 +498,7 @@ int main(int argc, char const *argv[]) {
         line_counter = 1;
         while(getline(ifile_macro, line)) {
             //  Ignora se for uma linha em branco
-            if (is_blank_line(line)) {
+            if (is_blank_line(line) || line == " ") {
                 line_counter++;
                 continue;
             }
@@ -490,7 +516,7 @@ int main(int argc, char const *argv[]) {
                     getline(ifile_macro, line);
 
                     //  Ignora se for uma linha em branco
-                    if (is_blank_line(line)) {
+                    if (is_blank_line(line) || line == " ") {
                         continue;
                     }
                     // Passa tudo para uppercase, para não ser case sensitive
@@ -541,6 +567,7 @@ int main(int argc, char const *argv[]) {
     
         ifile_macro.close();
     }
+
     ofile_pre_processed_file.close();
 
     if (use_mode == 'o') {
@@ -556,7 +583,7 @@ int main(int argc, char const *argv[]) {
         line_counter = 1;
         while (getline(ifile_pre_processed_file, line)){
             //  Ignora se for uma linha em branco
-            if (is_blank_line(line)) {
+            if (is_blank_line(line) || line == " ") {
                 line_counter++;
                 continue;
             }
@@ -572,7 +599,8 @@ int main(int argc, char const *argv[]) {
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
-            position_counter += operations_table[tokens[1]].memory_space; //tenho que arrumar para caso seja SPACE ou CONST no final, vou ter que fazer a tabela de dados.
+            errors_table_o = first_pass_instructions(tokens, operations_table, errors_table_o, &position_counter, &line_counter);
+            // position_counter += operations_table[tokens[1]].memory_space; //JA BOTEI NA FUNCAO DA LINHA DE CIMA, mas ainda tenho que arrumar para caso seja SPACE ou CONST no final, vou ter que fazer a tabela de dados.
 
             // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
             // COMENTARIO PARA ME AJUDAR COM O CONST E SPACE NO MEIO DO CODIGO
@@ -581,6 +609,14 @@ int main(int argc, char const *argv[]) {
             // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
             
             line_counter++;
+        }
+
+        // Segunda passagem
+        position_counter = 0;
+        line_counter = 1;
+        ifile_pre_processed_file.clear();
+        ifile_pre_processed_file.seekg(0);
+        while (getline(ifile_pre_processed_file, line)){
 
         }
         ifile_pre_processed_file.close();

@@ -9,6 +9,10 @@ troCA: mACro
 coPY A,   B;asdasd
 MulT MEC
 enDmAcrO
+n1:ConST -10;;  ;  asassad
+n2   :spaCE   ;    asdasdasd
+n3:  SpAce  ;asdasd
+n4  :   coNSt 20;sdfsdf
 iF EOq   ; asdasd asd
 loAD dale;asdasd
 COPY DALE, FON ; ASDADWEE
