@@ -30,3 +30,4 @@ L2: MuLT G; 42asd
 
     CoPY      D    ,     E   ; 144235 5457 
    L4   :   MULT    C   ;  8234 1asd
+   sToP

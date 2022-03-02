@@ -45,6 +45,7 @@ public:
 	int address = -1; // endereco de memoria onde o simbolo esta, -1 caso não seja definido, -2 caso seja rotulo de CONST ou SPACE(neste caso sera posto ao final do codigo e o valor -2 vai ser mudado para um endereco mesmo no final)
     bool used = false; // indica se o simbolo foi utilizado em algum lugar do codigo
     int line; // linha onde o simbolo foi declarado
+
 };
 
 class Item_errors_table {
@@ -303,6 +304,45 @@ vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <
 
     return errors_table;
 }
+
+// Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
+vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
+    bool found_symbol;
+    vector <Item_symbols_table>::iterator iter;
+    Item_errors_table error_item;
+    string symbol;
+    // ##########################################################################################################################################################################################
+    // VAI DAR ERRO CASO SEJA OS NUMEROS DEFINIDOS NO EQU, POIS NAO VAI ENCONTRAR ELES, TEM QUE PENSAR EM COMO RESOLVER ISSO
+    // TENHO QUE TER UM JEITO DE SABER ONDE EU CHAMEI A LABEL DO EQU PARA SABER QUE O NUMERO QUE ESTA ALI(TIPO NAS 3 PRIMEIRAS LINHAS DO ARQUIVO PRE PROCESSADO)
+    // POIS CASO EM ALGUMA OUTRA PARTE DO CODIGO EU ESCREVA UM NUMERO TEM QUE DAR ERRO, MAS SE FOR UM NUMERO QUE VEIO DO EQU NAO PODE DAR ERRO
+    // ##########################################################################################################################################################################################
+    symbol = tokens[2];
+    iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+    found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+    if (!found_symbol && tokens[2] != "") { // se nao encontrou o simbolo e o simbolo nao era uma string vazia
+        // Erro de declaracao de rotulo ausente
+        error_item.label = tokens[2];
+        error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
+        error_item.line_number = *line_counter;
+        errors_table.push_back(error_item);
+    }
+
+    if (tokens[1] == "COPY") { // se a operacao for COPY tem que pegar os dois operandos
+        symbol = tokens[3];
+        iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+        found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+        if (!found_symbol && tokens[3] != "") { // se nao encontrou o simbolo e o simbolo nao era uma string vazia
+            // Erro de declaracao de rotulo ausente
+            error_item.label = tokens[3];
+            error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
+            error_item.line_number = *line_counter;
+            errors_table.push_back(error_item);
+        }
+    }
+
+    return errors_table;
+}
+
 
 int main(int argc, char const *argv[]) {
     int j = 1; //TESTE
@@ -616,10 +656,29 @@ int main(int argc, char const *argv[]) {
         line_counter = 1;
         ifile_pre_processed_file.clear();
         ifile_pre_processed_file.seekg(0);
-        while (getline(ifile_pre_processed_file, line)){
+        while (getline(ifile_pre_processed_file, line)) {
+            //  Ignora se for uma linha em branco
+            if (is_blank_line(line) || line == " ") {
+                line_counter++;
+                continue;
+            }
+            // Passa tudo para uppercase, para não ser case sensitive
+            transform(line.begin(), line.end(),line.begin(), ::toupper);
+            // Pega os tokens da linha
+            tokens = get_tokens(line);
 
+            errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
+            // OLHAR O COMENTARIO QUE EU DEIXEI DENTRO DESSA FUNCAO ACIMA DESSA LINHA
+
+            line_counter++;
         }
         ifile_pre_processed_file.close();
+    }
+    cout << "Tabela de simbolos EQU IF:------------------------" << endl;
+    for (auto symbol_iter : symbols_table_equ_if) {
+        cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+        cout << "Linha: " << symbol_iter.line << " --- ";
+        cout << "Endereco: " << symbol_iter.address << endl;
     }
     cout << "Tabela de simbolos:------------------------" << endl;
     for (auto symbol_iter : symbols_table) {

@@ -9,6 +9,7 @@
         "xutility": "cpp",
         "tuple": "cpp",
         "algorithm": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "istream": "cpp"
     }
 }
