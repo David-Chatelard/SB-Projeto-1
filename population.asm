@@ -3,14 +3,19 @@ DALE      :       EQU        5    ;       ASDAWDQWEQWE
 mEc:eQu 10;asdasd
 if mec;asdasd
 LOaD FON   ;asdasdasd
-ADd FON
-SUB DALE;ASDSGERG
+      ADd FON
+   SUB DALE;ASDSGERG
+troCA: mACro
+coPY A,   B;asdasd
+MulT MEC
+enDmAcrO
 iF EOq   ; asdasd asd
 loAD dale;asdasd
 COPY DALE, FON ; ASDADWEE
 
 L1: DIV DOIS; 42asd
 L2   : ADD A; 2fsdf
+;TRoca
    L3: SUB B; 646x
 
 If foN ;asdasd
