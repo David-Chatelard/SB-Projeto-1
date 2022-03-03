@@ -1,6 +1,7 @@
 FOn: EqU 2;ASDASDASD
 DALE      :       EQU        5    ;       ASDAWDQWEQWE
 mEc:eQu 10;asdasd
+eoQ    :equ 0;asdad
 if mec;asdasd
 LOaD FON   ;asdasdasd
       ADd FON
@@ -20,6 +21,7 @@ COPY DALE, FON ; ASDADWEE
 L1: DIV DOIS; 42asd
 L2   : ADD A; 2fsdf
 ;TRoca
+troCA
    L3: SUB B; 646x
 
 If foN ;asdasd
@@ -31,3 +33,5 @@ L2: MuLT G; 42asd
     CoPY      D    ,     E   ; 144235 5457 
    L4   :   MULT    C   ;  8234 1asd
    sToP
+n5  :  const 3 ;asfsdg
+n6:   space   ; fgfjja

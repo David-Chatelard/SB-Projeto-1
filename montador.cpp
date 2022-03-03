@@ -45,7 +45,8 @@ public:
 	int address = -1; // endereco de memoria onde o simbolo esta, -1 caso não seja definido, -2 caso seja rotulo de CONST ou SPACE(neste caso sera posto ao final do codigo e o valor -2 vai ser mudado para um endereco mesmo no final)
     bool used = false; // indica se o simbolo foi utilizado em algum lugar do codigo
     int line; // linha onde o simbolo foi declarado
-
+    int value = 0;
+    bool is_const = false;
 };
 
 class Item_errors_table {
@@ -248,7 +249,7 @@ string format_line(vector <string> tokens){
 }
 
 // Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
-tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
+tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter, bool reached_stop){
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
     Item_symbols_table symbol_item;
@@ -264,18 +265,27 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
         if (found_symbol) { // Se o rotulo ja existe
             // Erro de rotulo ja definido
             error_item.label = tokens[0];
-            error_item.message = "Erro SEMANTICO, rotulo repetido";
+            error_item.message = "Erro SEMANTICO, declaracao de rotulo repetido";
             error_item.line_number = *line_counter;
             errors_table.push_back(error_item);
         }
         else{ //Rotulo nao existe
             if (tokens[1] == "CONST" || tokens[1] == "SPACE") { //se for o rotulo de uma diretiva, o endeco sera resolvido no fim da primeira passagem, para ficar no final do codigo objeto
                 symbol_item.symbol = symbol;
-                symbol_item.address = -2; // o -2 significa que vai ter que resolver depois do STOP na primeira passada
                 symbol_item.line = *line_counter;
+                if (tokens[1] == "CONST") {
+                    symbol_item.is_const = true;
+                    symbol_item.value = stoi(tokens[2]);
+                }
+                if (reached_stop) { // eh uma CONST ou SPACE que veio depois do STOP, ja pode botar o endereco certo
+                    symbol_item.address = *position_counter;
+                }
+                else { // eh uma CONST ou SPACE que veio antes do STOP, vai ter que arrumar o endereco depois
+                    symbol_item.address = -2; // o -2 significa que vai ter que resolver depois do STOP na primeira passada
+                }
                 symbols_table.push_back(symbol_item);
             }
-            else {
+            else { // se for um rotulo sem ser de uma diretiva CONST ou SPACE
                 // Adiciona o simbolo na tabela
                 symbol_item.symbol = symbol;
                 symbol_item.address = *position_counter;
@@ -288,14 +298,17 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
 }
 
 // Atualiza o contador de posicao e a tabela de erros caso ocorra algum erro envolvendo as instrucoes ou diretivas
-vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter){
+vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter, bool reached_stop){
     Item_errors_table error_item;
     
     if (operations_table.count(tokens[1])) { // se a operacao estiver na tabela de operacoes
         *position_counter += operations_table.at(tokens[1]).memory_space;
     }
+    else if ((tokens[1] == "CONST" || tokens[1] == "SPACE") && reached_stop) { //se for uma diretiva depois do STOP
+        (*position_counter)++;
+    }
     else if (tokens[1] != "CONST" && tokens[1] != "SPACE") { // nao achou na tabela de operacoes e nao eh diretiva
-        // Erro de rotulo ja definido
+        // Erro de operacao invalida
         error_item.label = tokens[1];
         error_item.message = "Erro SINTATICO, operacao invalida";
         error_item.line_number = *line_counter;
@@ -305,7 +318,7 @@ vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <
     return errors_table;
 }
 
-// Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
+//
 vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
@@ -350,7 +363,7 @@ int main(int argc, char const *argv[]) {
 
     char use_mode = argv[1][1];
 
-    bool found_symbol, if_is_valid = false, line_before_is_if = false, used_macro = false;
+    bool found_symbol, if_is_valid = false, line_before_is_if = false, used_macro = false, reached_stop = false;
 
     int position_counter = 0;
     int line_counter = 1;
@@ -638,8 +651,8 @@ int main(int argc, char const *argv[]) {
             cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
-            tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
-            errors_table_o = first_pass_instructions(tokens, operations_table, errors_table_o, &position_counter, &line_counter);
+            tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
+            errors_table_o = first_pass_instructions(tokens, operations_table, errors_table_o, &position_counter, &line_counter, reached_stop);
             // position_counter += operations_table[tokens[1]].memory_space; //JA BOTEI NA FUNCAO DA LINHA DE CIMA, mas ainda tenho que arrumar para caso seja SPACE ou CONST no final, vou ter que fazer a tabela de dados.
 
             // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
@@ -648,6 +661,17 @@ int main(int argc, char const *argv[]) {
             // CONST e SPACE pode estar no meio do código, mas vai ter que deslocar para o final(na ordem que aparece no código), para ficar no final no arquivo objeto e o endereço deles na tabela de símbolos vai ser esse endereço no final(não o endereço que seria no meio do código)
             // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
             
+            if (tokens[1] == "STOP") { // se o opcode da linha for STOP
+                reached_stop = true; // variavel para utilizar na funcao first_pass_labels, para definir o endereco dos CONST e SPACE que vierem depois do STOP
+                for (auto &symbol_iter : symbols_table) {
+                    if (symbol_iter.address == -2) { // se for CONST ou SPACE
+                        symbol_iter.address = position_counter; // bota um endereco depois do STOP
+                        position_counter++;
+                    }
+                }
+            }
+
+
             line_counter++;
         }
 
@@ -683,6 +707,10 @@ int main(int argc, char const *argv[]) {
     cout << "Tabela de simbolos:------------------------" << endl;
     for (auto symbol_iter : symbols_table) {
         cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+        cout << "Linha: " << symbol_iter.line << " --- ";
+        cout << "Valor: " << symbol_iter.value << " --- ";
+        cout << "Used: " << symbol_iter.used << " --- ";
+        cout << "Const: " << symbol_iter.is_const << " --- ";
         cout << "Endereco: " << symbol_iter.address << endl;
     }
     if (use_mode == 'p') {
