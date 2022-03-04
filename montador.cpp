@@ -653,13 +653,6 @@ int main(int argc, char const *argv[]) {
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
             errors_table_o = first_pass_instructions(tokens, operations_table, errors_table_o, &position_counter, &line_counter, reached_stop);
-            // position_counter += operations_table[tokens[1]].memory_space; //JA BOTEI NA FUNCAO DA LINHA DE CIMA, mas ainda tenho que arrumar para caso seja SPACE ou CONST no final, vou ter que fazer a tabela de dados.
-
-            // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
-            // COMENTARIO PARA ME AJUDAR COM O CONST E SPACE NO MEIO DO CODIGO
-            // Talvez usar uma flag end_program, que será true quando tiver passado pelo STOP, da pra setar o valor na função get_tokens()
-            // CONST e SPACE pode estar no meio do código, mas vai ter que deslocar para o final(na ordem que aparece no código), para ficar no final no arquivo objeto e o endereço deles na tabela de símbolos vai ser esse endereço no final(não o endereço que seria no meio do código)
-            // #############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
             
             if (tokens[1] == "STOP") { // se o opcode da linha for STOP
                 reached_stop = true; // variavel para utilizar na funcao first_pass_labels, para definir o endereco dos CONST e SPACE que vierem depois do STOP
@@ -670,7 +663,6 @@ int main(int argc, char const *argv[]) {
                     }
                 }
             }
-
 
             line_counter++;
         }
@@ -693,6 +685,7 @@ int main(int argc, char const *argv[]) {
 
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
             // OLHAR O COMENTARIO QUE EU DEIXEI DENTRO DESSA FUNCAO ACIMA DESSA LINHA
+            // FAZER O EQU SÓ NÃO DAR ERRO DEPOIS DE CONST OU IF, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
 
             line_counter++;
         }
