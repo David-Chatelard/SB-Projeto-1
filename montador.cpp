@@ -1,11 +1,11 @@
 /*
 Aluno: David Fanchic Chatelard
-Matrícula: 180138863
-Disciplina: Software Basico
+Matricula: 180138863
 Professor: Bruno Luiggi Macchiavello Espinoza
-IDE: Visual Studio Code
-Sistema Operacional: Windows 10
+Disciplina: Software Basico
 Compilador: MinGW gcc g++ 9.2.0
+Sistema Operacional: Windows 10
+IDE: Visual Studio Code
 */
 
 #include <iostream>
@@ -83,8 +83,32 @@ bool is_blank_line(string line) {
     return line.empty();
 }
 
+// Verifica se o rotulo possui algum caracter invalido
+bool is_valid_variable(string label, map <string, Item_operations_table> operations_table) {
+    // Verifica o tamanho do rotulo
+    if (label.length() > 99) { // se tiver mais do que 99 caracteres
+        return false;
+    }
+    // Verifica o primeiro digito
+    if (!isalpha(label[0]) && (label[0] != '_')) { // se o primeiro caracter nao for letra nem '_'
+        return false;
+    }
+    // Verifica o resto do rotulo
+    for (int i = 1; i < label.length(); i++) {
+        if (!isalpha(label[i]) && (label[i] != '_') && !isdigit(label[i])){ // se o caracter nao for letra nem '_' nem numero
+            return false;
+        }
+    }
+    // Verifica o rotulo inteiro
+    if (operations_table.count(label) || label == "CONST" || label == "SPACE" || label == "EQU" || label == "IF" || label == "MACRO") { // se o rotulo estiver na tabela de operacoes ou for uma diretiva
+        return false;
+    }
+    // Se tiver passado em todos os testes
+    return true;
+}
+
 // Separa os tokens da linha
-auto get_tokens(string line) {
+auto get_tokens(string line, char use_mode) {
     vector <string> tokens;
     string no_comments_line, label = "", opcode = "", arg1 = "", arg2 = "";
     string aux; //TESTE
@@ -324,15 +348,11 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
     vector <Item_symbols_table>::iterator iter;
     Item_errors_table error_item;
     string symbol;
-    // ##########################################################################################################################################################################################
-    // VAI DAR ERRO CASO SEJA OS NUMEROS DEFINIDOS NO EQU, POIS NAO VAI ENCONTRAR ELES, TEM QUE PENSAR EM COMO RESOLVER ISSO
-    // TENHO QUE TER UM JEITO DE SABER ONDE EU CHAMEI A LABEL DO EQU PARA SABER QUE O NUMERO QUE ESTA ALI(TIPO NAS 3 PRIMEIRAS LINHAS DO ARQUIVO PRE PROCESSADO)
-    // POIS CASO EM ALGUMA OUTRA PARTE DO CODIGO EU ESCREVA UM NUMERO TEM QUE DAR ERRO, MAS SE FOR UM NUMERO QUE VEIO DO EQU NAO PODE DAR ERRO
-    // ##########################################################################################################################################################################################
+
     symbol = tokens[2];
     iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
     found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-    if (!found_symbol && tokens[2] != "") { // se nao encontrou o simbolo e o simbolo nao era uma string vazia
+    if (!found_symbol && tokens[2] != "" && is_valid_variable(tokens[2], operations_table)) { // se nao encontrou o simbolo e o simbolo nao eh uma string vazia e nao possui caracteres invalidos
         // Erro de declaracao de rotulo ausente
         error_item.label = tokens[2];
         error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -344,7 +364,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
         symbol = tokens[3];
         iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
         found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-        if (!found_symbol && tokens[3] != "") { // se nao encontrou o simbolo e o simbolo nao era uma string vazia
+        if (!found_symbol && tokens[3] != "" && is_valid_variable(tokens[3], operations_table)) { // se nao encontrou o simbolo e o simbolo nao era uma string vazia e nao possui caracteres invalidos
             // Erro de declaracao de rotulo ausente
             error_item.label = tokens[3];
             error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -451,7 +471,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pre processar EQU e IF
-            tokens = get_tokens(line);
+            tokens = get_tokens(line, use_mode);
 
             // cout << "linha " << line_counter << ": --";     //TESTE
             // cout << "label: '" << tokens[0] << "' --";      //TESTE
@@ -507,7 +527,7 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
             if (if_is_valid && line_before_is_if && tokens[1] != "EQU") { // O IF anterior a essa linha foi valido, entao a linha sera usada no codigo
-                tokens = get_tokens(line);
+                tokens = get_tokens(line, use_mode);
                 tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter);
                 ofile_equ_if << line << endl; // escreve no arquivo objeto sem os simbolos do EQU, so com os valores
             }
@@ -559,7 +579,7 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
 
             // Pre processar MACRO
-            tokens = get_tokens(line);
+            tokens = get_tokens(line, use_mode);
             line = format_line(tokens);
             if (tokens[1] == "MACRO"){    // se a linha for definicao de uma MACRO
                 macro_name = tokens[0];
@@ -574,7 +594,7 @@ int main(int argc, char const *argv[]) {
                     }
                     // Passa tudo para uppercase, para não ser case sensitive
                     transform(line.begin(), line.end(),line.begin(), ::toupper);
-                    tokens = get_tokens(line);
+                    tokens = get_tokens(line, use_mode);
                     line = format_line(tokens);
 
                     if (line.find("ENDMACRO") != string::npos) { // se for a linha que tiver ENDMACRO
@@ -643,7 +663,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line);
+            tokens = get_tokens(line, use_mode);
             cout << "linha " << line_counter << ": --";    //TESTE
             cout << "label: '" << tokens[0] << "' --";     //TESTE
             cout << "opcode: '" << tokens[1] << "' --";    //TESTE
@@ -681,7 +701,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line);
+            tokens = get_tokens(line, use_mode);
 
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
             // OLHAR O COMENTARIO QUE EU DEIXEI DENTRO DESSA FUNCAO ACIMA DESSA LINHA
