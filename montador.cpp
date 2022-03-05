@@ -62,15 +62,15 @@ public:
 // Funcao para inicializar a tabela de operacoes
 auto begin_operations_table(){
 	map <string, Item_operations_table> table;
-	table["ADD"].opcode = "01", table["ADD"].num_args = 1, table["ADD"].memory_space = 2;
-	table["SUB"].opcode = "02", table["SUB"].num_args = 1, table["SUB"].memory_space = 2;
-	table["MULT"].opcode = "03", table["MULT"].num_args = 1, table["MULT"].memory_space = 2;
-	table["DIV"].opcode = "04", table["DIV"].num_args = 1, table["DIV"].memory_space = 2;
-	table["JMP"].opcode = "05", table["JMP"].num_args = 1, table["JMP"].memory_space = 2;
-	table["JMPN"].opcode = "06", table["JMPN"].num_args = 1, table["JMPN"].memory_space = 2;
-	table["JMPP"].opcode = "07", table["JMPP"].num_args = 1, table["JMPP"].memory_space = 2;
-	table["JMPZ"].opcode = "08", table["JMPZ"].num_args = 1, table["JMPZ"].memory_space = 2;
-	table["COPY"].opcode = "09", table["COPY"].num_args = 2, table["COPY"].memory_space = 3;
+	table["ADD"].opcode = "1", table["ADD"].num_args = 1, table["ADD"].memory_space = 2;
+	table["SUB"].opcode = "2", table["SUB"].num_args = 1, table["SUB"].memory_space = 2;
+	table["MULT"].opcode = "3", table["MULT"].num_args = 1, table["MULT"].memory_space = 2;
+	table["DIV"].opcode = "4", table["DIV"].num_args = 1, table["DIV"].memory_space = 2;
+	table["JMP"].opcode = "5", table["JMP"].num_args = 1, table["JMP"].memory_space = 2;
+	table["JMPN"].opcode = "6", table["JMPN"].num_args = 1, table["JMPN"].memory_space = 2;
+	table["JMPP"].opcode = "7", table["JMPP"].num_args = 1, table["JMPP"].memory_space = 2;
+	table["JMPZ"].opcode = "8", table["JMPZ"].num_args = 1, table["JMPZ"].memory_space = 2;
+	table["COPY"].opcode = "9", table["COPY"].num_args = 2, table["COPY"].memory_space = 3;
 	table["LOAD"].opcode = "10", table["LOAD"].num_args = 1, table["LOAD"].memory_space = 2;
 	table["STORE"].opcode = "11", table["STORE"].num_args = 1, table["STORE"].memory_space = 2;
 	table["INPUT"].opcode = "12", table["INPUT"].num_args = 1, table["INPUT"].memory_space = 2;
@@ -472,7 +472,7 @@ vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map 
 
     else if (opcode == "SPACE" && reached_stop && arg1.empty() && arg2.empty()) { // se o opcode for SPACE e estiver depois do STOP e nao tiver nenhum operando
         (*position_counter)++; // atualiza o contador de posicao
-        output_file << "00" << ' '; // escreve o espaco reservado
+        output_file << "0" << ' '; // escreve o espaco reservado
     }
 
     else if (opcode == "CONST" && (arg1.empty() || !arg2.empty())){ // se o opcode for CONST e tiver quantidade de operandos errada
@@ -833,7 +833,7 @@ int main(int argc, char const *argv[]) {
                             output_file << symbol_iter.value << ' '; // escreve o valor do CONST no codigo objeto
                         }
                         else if (symbol_iter.is_space) { // se for SPACE
-                            output_file << "00" << ' '; // escreve o espaco reservado
+                            output_file << "0" << ' '; // escreve o espaco reservado
                         }
                         position_counter++;
                     }
