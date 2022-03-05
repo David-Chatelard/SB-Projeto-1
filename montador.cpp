@@ -342,17 +342,21 @@ vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <
     return errors_table;
 }
 
-//
+// Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo os rotulos
 vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
     Item_errors_table error_item;
     string symbol;
 
+    // ###############################################################################################################################################################################################################
+    // ALEM DOS ERROS DE ROTULOS AUSENTES EU POSSO BOTAR AQUI OS ERROS DE INSTRUCAO COM QUANTIDADE DE OPERANDOS ERRADO
+    // ###############################################################################################################################################################################################################
+
     symbol = tokens[2];
     iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
     found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-    if (!found_symbol && tokens[2] != "" && is_valid_variable(tokens[2], operations_table)) { // se nao encontrou o simbolo e o simbolo nao eh uma string vazia e nao possui caracteres invalidos
+    if (!found_symbol && tokens[2] != "" && is_valid_variable(tokens[2], operations_table)) { // se nao encontrou o simbolo e o simbolo nao eh uma string vazia e so possui caracteres validos
         // Erro de declaracao de rotulo ausente
         error_item.label = tokens[2];
         error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -364,7 +368,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
         symbol = tokens[3];
         iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
         found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-        if (!found_symbol && tokens[3] != "" && is_valid_variable(tokens[3], operations_table)) { // se nao encontrou o simbolo e o simbolo nao era uma string vazia e nao possui caracteres invalidos
+        if (!found_symbol && tokens[3] != "" && is_valid_variable(tokens[3], operations_table)) { // se nao encontrou o simbolo e o simbolo nao era uma string vazia e so possui caracteres validos
             // Erro de declaracao de rotulo ausente
             error_item.label = tokens[3];
             error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -374,6 +378,104 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
     }
 
     return errors_table;
+}
+
+// Gera o codigo objeto e atualiza a tabela de erros caso ocorra erros de quantidade de operandos invalida ou operacao invalida
+vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, ofstream &output_file, int *position_counter, int *line_counter, bool reached_stop) {
+    int index;
+    bool found_symbol;
+    vector <Item_symbols_table>::iterator iter;
+    Item_errors_table error_item;    
+    string symbol, opcode = tokens[1], arg1 = tokens[2], arg2 = tokens[3];
+    
+    if (operations_table.count(opcode)) { // se o opcode estiver na tabela de operacoes
+        *position_counter += operations_table.at(opcode).memory_space; // atualiza o contador de posicao
+
+        if (opcode == "STOP" && arg1.empty() && arg2.empty()) { // se for STOP e nao tiver nenhum operando
+            output_file << operations_table.at(opcode).opcode << ' '; // escreve o opcode de STOP
+        }
+
+        else if (opcode == "COPY" && !arg1.empty() && !arg2.empty()) { // se for COPY e tiver 2 operandos
+            output_file << operations_table.at(opcode).opcode << ' '; // escreve o opcode de COPY
+
+            // Para o arg1
+            symbol = arg1;
+            iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+            found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+            index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
+            if (found_symbol){ // rotulo encontrado
+                output_file << symbols_table[index].address << ' '; // escreve o endereco do arg1
+            }
+            else{ // rotulo nao encontrado
+                // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O ROTULO
+                // O ERRO DE ROTULO NAO DEFINIDO JA FOI FEITO NA FUNCAO second_pass_labels
+            }
+
+            // Para o arg2
+            symbol = arg2;
+            iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+            found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+            index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
+            if (found_symbol){ // rotulo encontrado
+                output_file << symbols_table[index].address << ' '; // escreve o endereco do arg2
+            }
+            else{ // rotulo nao encontrado
+                // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O ROTULO
+                // O ERRO DE ROTULO NAO DEFINIDO JA FOI FEITO NA FUNCAO second_pass_labels
+            }
+        }
+
+        else if (opcode != "STOP" && opcode != "COPY" && !arg1.empty() && arg2.empty()) { // se nao for STOP e nem COPY e tiver 1 operando
+            output_file << operations_table.at(opcode).opcode << ' '; // escreve o opcode da operacao
+
+            // Para o arg1
+            symbol = arg1;
+            iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+            found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+            index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
+            if (found_symbol){ // rotulo encontrado
+                output_file << symbols_table[index].address << ' '; // escreve o endereco do arg1
+            }
+            else{ // rotulo nao encontrado
+                // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O ROTULO
+                // O ERRO DE ROTULO NAO DEFINIDO JA FOI FEITO NA FUNCAO second_pass_labels
+            }
+        }
+
+        else{
+            // Erro de instrucao com a quantidade de operando errada
+            error_item.label = tokens[1];
+            error_item.message = "Erro SINTATICO, instrucao com a quantidade de operando errada";
+            error_item.line_number = *line_counter;
+            errors_table.push_back(error_item);
+        }
+    }
+
+    else if (opcode == "CONST" && reached_stop) { // se o opcode for CONST e estiver depois do STOP
+        (*position_counter)++; // atualiza o contador de posicao
+
+        // Para o arg1
+            symbol = arg1;
+            iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
+            found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+            index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
+            if (found_symbol){ // rotulo encontrado
+                output_file << symbols_table[index].value << ' '; // escreve o valor do arg1
+            }
+    }
+
+    else if (opcode == "SPACE" && reached_stop) { // se o opcode for SPACE e estiver depois do STOP
+        (*position_counter)++; // atualiza o contador de posicao
+        output_file << '00' << ' '; // escreve o espaco reservado
+    }
+
+    else{ // se o opcode nao estiver na tabela de operacoes e nem for CONST e nem SPACE
+        // Erro de operacao invalida
+        error_item.label = tokens[1];
+        error_item.message = "Erro SINTATICO/SEMANTICO, operacao invalida";
+        error_item.line_number = *line_counter;
+        errors_table.push_back(error_item);
+    }
 }
 
 
@@ -690,6 +792,7 @@ int main(int argc, char const *argv[]) {
         // Segunda passagem
         position_counter = 0;
         line_counter = 1;
+        reached_stop = false;
         ifile_pre_processed_file.clear();
         ifile_pre_processed_file.seekg(0);
         while (getline(ifile_pre_processed_file, line)) {
@@ -704,8 +807,16 @@ int main(int argc, char const *argv[]) {
             tokens = get_tokens(line, use_mode);
 
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
-            // OLHAR O COMENTARIO QUE EU DEIXEI DENTRO DESSA FUNCAO ACIMA DESSA LINHA
-            // FAZER O EQU SÓ NÃO DAR ERRO DEPOIS DE CONST OU IF, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
+            // ###############################################################################################################################################################################################################
+            // ALEM DOS ERROS DE ROTULOS AUSENTES EU POSSO BOTAR NA FUNCAO ACIMA OS ERROS DE INSTRUCAO COM QUANTIDADE DE OPERANDOS ERRADO
+            // ###############################################################################################################################################################################################################
+            // FAZER O VALOR QUE VEIO DO EQU SÓ NÃO DAR ERRO DE TOKEN INVALIDO(PORQUE SERIA UM NUMERO, O NOME DA VARIAVEL COMEÇARIA COM NUMERO) DEPOIS DE CONST OU IF, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
+
+            errors_table_o = second_pass_instructions(tokens, operations_table, symbols_table, errors_table_o, output_file, &position_counter, &line_counter, reached_stop);
+
+            if (tokens[1] == "STOP") { // se o opcode da linha for STOP
+                reached_stop = true; // variavel para utilizar na funcao second_pass_instructions
+            }
 
             line_counter++;
         }

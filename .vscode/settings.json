@@ -10,6 +10,7 @@
         "tuple": "cpp",
         "algorithm": "cpp",
         "fstream": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "map": "cpp"
     }
 }
