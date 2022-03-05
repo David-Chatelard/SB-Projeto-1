@@ -46,7 +46,9 @@ public:
     bool used = false; // indica se o simbolo foi utilizado em algum lugar do codigo
     int line; // linha onde o simbolo foi declarado
     int value = 0;
-    bool is_const = false;
+    bool is_const = false; // eh definida na funcao first_pass_labels
+    bool is_space = false; // eh definida na funcao first_pass_labels
+    bool before_stop = true; // eh definida na funcao first_pass_labels
 };
 
 class Item_errors_table {
@@ -301,8 +303,12 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
                     symbol_item.is_const = true;
                     symbol_item.value = stoi(tokens[2]);
                 }
+                if (tokens[1] == "SPACE") {
+                    symbol_item.is_space = true;
+                }
                 if (reached_stop) { // eh uma CONST ou SPACE que veio depois do STOP, ja pode botar o endereco certo
                     symbol_item.address = *position_counter;
+                    symbol_item.before_stop = false;
                 }
                 else { // eh uma CONST ou SPACE que veio antes do STOP, vai ter que arrumar o endereco depois
                     symbol_item.address = -2; // o -2 significa que vai ter que resolver depois do STOP na primeira passada
@@ -383,6 +389,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
 // Gera o codigo objeto e atualiza a tabela de erros caso ocorra erros de quantidade de operandos invalida ou operacao invalida
 vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, ofstream &output_file, int *position_counter, int *line_counter, bool reached_stop) {
     int index;
+    int value;
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
     Item_errors_table error_item;    
@@ -455,27 +462,34 @@ vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map 
         (*position_counter)++; // atualiza o contador de posicao
 
         // Para o arg1
-            symbol = arg1;
-            iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
-            found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-            index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
-            if (found_symbol){ // rotulo encontrado
-                output_file << symbols_table[index].value << ' '; // escreve o valor do arg1
+        value = stoi(arg1);
+        iter = find_if(symbols_table.begin(), symbols_table.end(), [&value](const Item_symbols_table table_item){return table_item.value == value;});
+        found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
+        index = distance(symbols_table.begin(), iter); // indice do rotulo na tabela de simbolos
+        if (found_symbol){ // rotulo encontrado
+            output_file << symbols_table[index].value << ' '; // escreve o valor do arg1
+        }
+        else{ // rotulo nao encontrado
+            // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O ROTULO
+            // O ERRO DE ROTULO NAO DEFINIDO JA FOI FEITO NA FUNCAO second_pass_labels
             }
     }
 
     else if (opcode == "SPACE" && reached_stop) { // se o opcode for SPACE e estiver depois do STOP
         (*position_counter)++; // atualiza o contador de posicao
-        output_file << '00' << ' '; // escreve o espaco reservado
+        output_file << "00" << ' '; // escreve o espaco reservado
     }
 
-    else{ // se o opcode nao estiver na tabela de operacoes e nem for CONST e nem SPACE
+    else if (opcode != "CONST" && opcode != "SPACE"){ // se o opcode nao estiver na tabela de operacoes e nem for CONST e nem SPACE
         // Erro de operacao invalida
-        error_item.label = tokens[1];
-        error_item.message = "Erro SINTATICO/SEMANTICO, operacao invalida";
-        error_item.line_number = *line_counter;
-        errors_table.push_back(error_item);
+        // Esse erro ja foi declarado na funcao first_pass_labels
+        // error_item.label = tokens[1];
+        // error_item.message = "Erro SINTATICO, operacao invalida";
+        // error_item.line_number = *line_counter;
+        // errors_table.push_back(error_item);
     }
+
+    return errors_table;
 }
 
 
@@ -779,7 +793,7 @@ int main(int argc, char const *argv[]) {
             if (tokens[1] == "STOP") { // se o opcode da linha for STOP
                 reached_stop = true; // variavel para utilizar na funcao first_pass_labels, para definir o endereco dos CONST e SPACE que vierem depois do STOP
                 for (auto &symbol_iter : symbols_table) {
-                    if (symbol_iter.address == -2) { // se for CONST ou SPACE
+                    if (symbol_iter.address == -2) { // se for CONST ou SPACE que veio antes do STOP
                         symbol_iter.address = position_counter; // bota um endereco depois do STOP
                         position_counter++;
                     }
@@ -816,8 +830,21 @@ int main(int argc, char const *argv[]) {
 
             if (tokens[1] == "STOP") { // se o opcode da linha for STOP
                 reached_stop = true; // variavel para utilizar na funcao second_pass_instructions
-            }
 
+                // Escrevendo no codigo objeto os CONST e SPACE que vieram antes do STOP
+                for (auto symbol_iter : symbols_table) {
+                    if (symbol_iter.before_stop && (symbol_iter.is_const || symbol_iter.is_space)) { // se veio antes do STOP e eh CONST ou SPACE
+                        if (symbol_iter.is_const) { // se for CONST
+                            output_file << symbol_iter.value << ' '; // escreve o valor do CONST no codigo objeto
+                        }
+                        else if (symbol_iter.is_space) { // se for SPACE
+                            output_file << "00" << ' '; // escreve o espaco reservado
+                        }
+                        position_counter++;
+                    }
+                }
+
+            }            
             line_counter++;
         }
         ifile_pre_processed_file.close();
@@ -835,6 +862,8 @@ int main(int argc, char const *argv[]) {
         cout << "Valor: " << symbol_iter.value << " --- ";
         cout << "Used: " << symbol_iter.used << " --- ";
         cout << "Const: " << symbol_iter.is_const << " --- ";
+        cout << "Space: " << symbol_iter.is_space << " --- ";
+        cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
         cout << "Endereco: " << symbol_iter.address << endl;
     }
     if (use_mode == 'p') {
