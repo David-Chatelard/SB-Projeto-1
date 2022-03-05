@@ -844,7 +844,8 @@ int main(int argc, char const *argv[]) {
                     }
                 }
 
-            }            
+            }          
+              
             line_counter++;
         }
         ifile_pre_processed_file.close();
