@@ -87,6 +87,10 @@ bool is_blank_line(string line) {
 
 // Verifica se o rotulo possui algum caracter invalido
 bool is_valid_variable(string label, map <string, Item_operations_table> operations_table) {
+    // Verifica se eh string vazia
+    if (label.empty()) {
+        return true;
+    }
     // Verifica o tamanho do rotulo
     if (label.length() > 99) { // se tiver mais do que 99 caracteres
         return false;
@@ -776,6 +780,18 @@ int main(int argc, char const *argv[]) {
             // ################################################################################################################################################################################################################################################################################################################################################
             //TALVEZ FAZER AQUI A VERIFICACAO DOS TOKENS VALIDOS E GERAR OS ERROS LEXICOS DE TOKENS INVALIDOS
             // ################################################################################################################################################################################################################################################################################################################################################
+
+            // Gera os erros de token invalido
+            for (int k = 0; k < 4; k++) {
+                if (!is_valid_variable(tokens[k], operations_table)) { // se o token nao for valido
+                    // Erro token invalido
+                    error_item.label = tokens[k];
+                    error_item.message = "Erro LEXICO, token invalido";
+                    error_item.line_number = line_counter;
+                    errors_table_o.push_back(error_item);
+                }
+            }
+
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
