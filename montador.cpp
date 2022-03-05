@@ -156,7 +156,6 @@ auto get_tokens(string line, char use_mode) {
     ss_no_comments_line >> opcode;
     // cout << "opcode >>-- '" << opcode << "'"  << endl;   //TESTE
     // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
-    // !!!Fazer os corner case para caso tenha opcode invalido!!!
     // !!!Fazer os corner case para caso tenha numero invalido de argumentos dependendo do opcode!!!
     // !!!Fazer os corner case para verificar se tem ',' caso seja COPY!!!
 
@@ -274,7 +273,7 @@ string format_line(vector <string> tokens){
     }
 }
 
-// Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
+// Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
 tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter, bool reached_stop){
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
@@ -327,7 +326,7 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
     return {symbols_table, errors_table};
 }
 
-// Atualiza o contador de posicao e a tabela de erros caso ocorra algum erro envolvendo as instrucoes ou diretivas
+// Atualiza o contador de posicao e a tabela de erros caso ocorra erro de operacao invalida
 vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter, bool reached_stop){
     Item_errors_table error_item;
     
@@ -340,7 +339,7 @@ vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <
     else if (tokens[1] != "CONST" && tokens[1] != "SPACE") { // nao achou na tabela de operacoes e nao eh diretiva
         // Erro de operacao invalida
         error_item.label = tokens[1];
-        error_item.message = "Erro SINTATICO, operacao invalida";
+        error_item.message = "Erro SINTATICO, operacao invalida, token de operacao invalido";
         error_item.line_number = *line_counter;
         errors_table.push_back(error_item);
     }
@@ -348,16 +347,12 @@ vector <Item_errors_table> first_pass_instructions(vector <string> tokens, map <
     return errors_table;
 }
 
-// Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo os rotulos
+// Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de declaracao de rotulo ausente
 vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
     bool found_symbol;
     vector <Item_symbols_table>::iterator iter;
     Item_errors_table error_item;
     string symbol;
-
-    // ###############################################################################################################################################################################################################
-    // ALEM DOS ERROS DE ROTULOS AUSENTES EU POSSO BOTAR AQUI OS ERROS DE INSTRUCAO COM QUANTIDADE DE OPERANDOS ERRADO
-    // ###############################################################################################################################################################################################################
 
     symbol = tokens[2];
     iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
@@ -386,7 +381,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
     return errors_table;
 }
 
-// Gera o codigo objeto e atualiza a tabela de erros caso ocorra erros de quantidade de operandos invalida ou operacao invalida
+// Gera o codigo objeto e atualiza a tabela de erros caso ocorra erro de quantidade de operandos invalida
 vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, ofstream &output_file, int *position_counter, int *line_counter, bool reached_stop) {
     int index;
     int value;
@@ -458,7 +453,7 @@ vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map 
         }
     }
 
-    else if (opcode == "CONST" && reached_stop) { // se o opcode for CONST e estiver depois do STOP
+    else if (opcode == "CONST" && reached_stop && !arg1.empty() && arg2.empty()) { // se o opcode for CONST e estiver depois do STOP e tiver so 1 operando
         (*position_counter)++; // atualiza o contador de posicao
 
         // Para o arg1
@@ -469,24 +464,31 @@ vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map 
         if (found_symbol){ // rotulo encontrado
             output_file << symbols_table[index].value << ' '; // escreve o valor do arg1
         }
-        else{ // rotulo nao encontrado
-            // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O ROTULO
+        else{ // valor nao encontrado, ACHO QUE NUNCA ACONTECE ESSE CASO DE NAO ENCONTRAR O VALOR
+            // TALVEZ PODERIA BOTAR UM XX, JA QUE NAO VAI EXISTIR O VALOR
             // O ERRO DE ROTULO NAO DEFINIDO JA FOI FEITO NA FUNCAO second_pass_labels
             }
     }
 
-    else if (opcode == "SPACE" && reached_stop) { // se o opcode for SPACE e estiver depois do STOP
+    else if (opcode == "SPACE" && reached_stop && arg1.empty() && arg2.empty()) { // se o opcode for SPACE e estiver depois do STOP e nao tiver nenhum operando
         (*position_counter)++; // atualiza o contador de posicao
         output_file << "00" << ' '; // escreve o espaco reservado
     }
 
-    else if (opcode != "CONST" && opcode != "SPACE"){ // se o opcode nao estiver na tabela de operacoes e nem for CONST e nem SPACE
-        // Erro de operacao invalida
-        // Esse erro ja foi declarado na funcao first_pass_labels
-        // error_item.label = tokens[1];
-        // error_item.message = "Erro SINTATICO, operacao invalida";
-        // error_item.line_number = *line_counter;
-        // errors_table.push_back(error_item);
+    else if (opcode == "CONST" && (arg1.empty() || !arg2.empty())){ // se o opcode for CONST e tiver quantidade de operandos errada
+        // Erro de instrucao com a quantidade de operando errada
+        error_item.label = tokens[1];
+        error_item.message = "Erro SINTATICO, instrucao com a quantidade de operando errada";
+        error_item.line_number = *line_counter;
+        errors_table.push_back(error_item);
+    }
+
+    else if (opcode == "SPACE" && (!arg1.empty() || !arg2.empty())){ // se o opcode for SPACE e tiver quantidade de operandos errada
+        // Erro de instrucao com a quantidade de operando errada
+        error_item.label = tokens[1];
+        error_item.message = "Erro SINTATICO, instrucao com a quantidade de operando errada";
+        error_item.line_number = *line_counter;
+        errors_table.push_back(error_item);
     }
 
     return errors_table;
@@ -520,7 +522,6 @@ int main(int argc, char const *argv[]) {
 
     string line; // linha lida do arquivo
     string macro_name(""); // nome da MACRO
-    // string no_comments_line, label;         //TESTE
 
     vector <string> tokens;
     vector <string> macro_lines; // vetor com as linhas da MACRO
@@ -559,20 +560,6 @@ int main(int argc, char const *argv[]) {
     }
 
     operations_table = begin_operations_table(); // inicializa a tabela de operacoes
-
-    //  while (getline(file, line)) {                                                                           //TESTE
-    //      cout << "Linha: " << line << endl;                                                                  //TESTE
-    //      stringstream ss_line(line);                                                                         //TESTE
-    //      getline(ss_line, no_comments_line, ';');                                                            //TESTE
-    //      cout << "Linha sem comentarios: " << no_comments_line << endl;                                      //TESTE
-    //      cout << "Testando o .find(): " << no_comments_line.find('u') << endl;                               //TESTE
-    //      cout << "Testando o .substr(): " << no_comments_line.substr(no_comments_line.find('u')) << endl;    //TESTE
-    //      aux = no_comments_line.substr(no_comments_line.find('u'));                                          //TESTE
-    //      aux.erase(0, 1);                                                                                    //TESTE
-    //      cout << "Testando o .erase(): " << aux << endl;                                                     //TESTE
-    //      ss_line >> ws >> aux2;                                                                              //TESTE
-    //      cout << "Testando o aux2: " << aux2 << endl;                                                        //TESTE
-    //  }                                                                                                       //TESTE
 
     if (use_mode == 'p' || use_mode == 'o') {
         // Passagem EQU e IF
@@ -780,14 +767,20 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
             tokens = get_tokens(line, use_mode);
-            cout << "linha " << line_counter << ": --";    //TESTE
-            cout << "label: '" << tokens[0] << "' --";     //TESTE
-            cout << "opcode: '" << tokens[1] << "' --";    //TESTE
-            cout << "arg1: '" << tokens[2] << "' --";      //TESTE
-            cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
+            // cout << "linha " << line_counter << ": --";    //TESTE
+            // cout << "label: '" << tokens[0] << "' --";     //TESTE
+            // cout << "opcode: '" << tokens[1] << "' --";    //TESTE
+            // cout << "arg1: '" << tokens[2] << "' --";      //TESTE
+            // cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
 
-            //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
+            // ################################################################################################################################################################################################################################################################################################################################################
+            //TALVEZ FAZER AQUI A VERIFICACAO DOS TOKENS VALIDOS E GERAR OS ERROS LEXICOS DE TOKENS INVALIDOS
+            // ################################################################################################################################################################################################################################################################################################################################################
+
+            //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
+
+            // Atualiza o contador de posicao e a tabela de erros caso erro de operacao invalida
             errors_table_o = first_pass_instructions(tokens, operations_table, errors_table_o, &position_counter, &line_counter, reached_stop);
             
             if (tokens[1] == "STOP") { // se o opcode da linha for STOP
@@ -820,14 +813,16 @@ int main(int argc, char const *argv[]) {
             // Pega os tokens da linha
             tokens = get_tokens(line, use_mode);
 
+            // Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de declaracao de rotulo ausente
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
             // ###############################################################################################################################################################################################################
-            // ALEM DOS ERROS DE ROTULOS AUSENTES EU POSSO BOTAR NA FUNCAO ACIMA OS ERROS DE INSTRUCAO COM QUANTIDADE DE OPERANDOS ERRADO
-            // ###############################################################################################################################################################################################################
             // FAZER O VALOR QUE VEIO DO EQU SÓ NÃO DAR ERRO DE TOKEN INVALIDO(PORQUE SERIA UM NUMERO, O NOME DA VARIAVEL COMEÇARIA COM NUMERO) DEPOIS DE CONST OU IF, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
+            // ###############################################################################################################################################################################################################
 
+            // Gera o codigo objeto e atualiza a tabela de erros caso ocorra erro de quantidade de operandos invalida
             errors_table_o = second_pass_instructions(tokens, operations_table, symbols_table, errors_table_o, output_file, &position_counter, &line_counter, reached_stop);
 
+            // Escre no codigo objeto os CONST e SPACE que vieram antes do STOP
             if (tokens[1] == "STOP") { // se o opcode da linha for STOP
                 reached_stop = true; // variavel para utilizar na funcao second_pass_instructions
 
@@ -845,28 +840,28 @@ int main(int argc, char const *argv[]) {
                 }
 
             }          
-              
+
             line_counter++;
         }
         ifile_pre_processed_file.close();
     }
-    cout << "Tabela de simbolos EQU IF:------------------------" << endl;
-    for (auto symbol_iter : symbols_table_equ_if) {
-        cout << "Simbolo: " << symbol_iter.symbol << " --- ";
-        cout << "Linha: " << symbol_iter.line << " --- ";
-        cout << "Endereco: " << symbol_iter.address << endl;
-    }
-    cout << "Tabela de simbolos:------------------------" << endl;
-    for (auto symbol_iter : symbols_table) {
-        cout << "Simbolo: " << symbol_iter.symbol << " --- ";
-        cout << "Linha: " << symbol_iter.line << " --- ";
-        cout << "Valor: " << symbol_iter.value << " --- ";
-        cout << "Used: " << symbol_iter.used << " --- ";
-        cout << "Const: " << symbol_iter.is_const << " --- ";
-        cout << "Space: " << symbol_iter.is_space << " --- ";
-        cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
-        cout << "Endereco: " << symbol_iter.address << endl;
-    }
+    // cout << "Tabela de simbolos EQU IF:------------------------" << endl;
+    // for (auto symbol_iter : symbols_table_equ_if) {
+    //     cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+    //     cout << "Linha: " << symbol_iter.line << " --- ";
+    //     cout << "Endereco: " << symbol_iter.address << endl;
+    // }
+    // cout << "Tabela de simbolos:------------------------" << endl;
+    // for (auto symbol_iter : symbols_table) {
+    //     cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+    //     cout << "Linha: " << symbol_iter.line << " --- ";
+    //     cout << "Valor: " << symbol_iter.value << " --- ";
+    //     cout << "Used: " << symbol_iter.used << " --- ";
+    //     cout << "Const: " << symbol_iter.is_const << " --- ";
+    //     cout << "Space: " << symbol_iter.is_space << " --- ";
+    //     cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
+    //     cout << "Endereco: " << symbol_iter.address << endl;
+    // }
     if (use_mode == 'p') {
         cout << "Tabela de erros -p:------------------------" << endl;
         for (auto error_iter : errors_table_p) {
@@ -893,6 +888,9 @@ int main(int argc, char const *argv[]) {
     }
 
     output_file.close();
+
+    remove("EQU_IF.asm");
+    remove("pre_processed.asm");
 
     // if(remove("EQU_IF.asm") != 0 ){
     //     cout << "Error deleting file" << endl;
