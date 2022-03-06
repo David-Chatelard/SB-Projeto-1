@@ -1,18 +1,16 @@
-SECTION DATA
 DOIS: CONST 2
-N: SPACE 3 
-SECTION TEXT
+N: SPACE 
 INPUT N; 0
 LOAD N; 2
 L1:DIV DOIS; 4
-STORE N+1; 6
+STORE N; 6
 MULT DOIS; 8 
-STORE N+2; 10
+STORE N; 10
 LOAD N; 12
-SUB N+2; 14  
-STORE N+2; 16
-OUTPUT N+2; 18 
-COPY N+1,N; 
+SUB N; 14  
+STORE N; 16
+OUTPUT N; 18 
+COPY N,N; @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 LOAD N; 23
 JMPP L1; 25
 STOP; 27 

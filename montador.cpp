@@ -85,8 +85,53 @@ bool is_blank_line(string line) {
     return line.empty();
 }
 
-// Verifica se o rotulo possui algum caracter invalido
-bool is_valid_variable(string label, map <string, Item_operations_table> operations_table) {
+// Verifica se uma string eh um numero positivo ou negativo
+bool is_number(string str) {
+    if (str[0] == '-') { // se for um numero negativo
+        str.erase(0, 1); // remove o sinal de -
+    }
+    for (char c : str) {
+        if (!isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Verifica se o rotulo eh valido de acordo com as regras
+bool is_valid_variable(string label, map <string, Item_operations_table> operations_table, bool line_has_const) {
+    // Verifica se eh string vazia
+    if (label.empty()) {
+        return true;
+    }
+    // Verifica o tamanho do rotulo
+    if (label.length() > 99) { // se tiver mais do que 99 caracteres
+        return false;
+    }
+    // Verifica o primeiro digito
+    if (!isalpha(label[0]) && (label[0] != '_')) { // se o primeiro caracter nao for letra nem '_'
+        if (line_has_const && is_number(label)) { // se tiver CONST na linha e a label for somente um numero
+            return true;
+        }
+        return false;
+    }
+    // Verifica o resto do rotulo
+    for (int i = 1; i < label.length(); i++) {
+        if (!isalpha(label[i]) && (label[i] != '_') && !isdigit(label[i])){ // se o caracter nao for letra nem '_' nem numero
+            return false;
+        }
+    }
+    // Verifica o rotulo inteiro
+    if (operations_table.count(label) || label == "CONST" || label == "SPACE" || label == "EQU" || label == "IF" || label == "MACRO") { // se o rotulo estiver na tabela de operacoes ou for uma diretiva
+        return false;
+    }
+    // Se tiver passado em todos os testes
+    return true;
+}
+
+// Verifica se a instrucao eh um opcode ou diretiva ou se pelo menos eh uma palavra valida(por exemplo para 2ADD vai retornar false, mas para ADD2 vai retornar true)
+// Nao verifica se eh uma instrucao valida, somente verifica se a palavra escrita eh valida
+bool is_valid_instruction(string label, map <string, Item_operations_table> operations_table) {
     // Verifica se eh string vazia
     if (label.empty()) {
         return true;
@@ -107,7 +152,7 @@ bool is_valid_variable(string label, map <string, Item_operations_table> operati
     }
     // Verifica o rotulo inteiro
     if (operations_table.count(label) || label == "CONST" || label == "SPACE" || label == "EQU" || label == "IF" || label == "MACRO") { // se o rotulo estiver na tabela de operacoes ou for uma diretiva
-        return false;
+        return true;
     }
     // Se tiver passado em todos os testes
     return true;
@@ -115,9 +160,14 @@ bool is_valid_variable(string label, map <string, Item_operations_table> operati
 
 // Separa os tokens da linha
 auto get_tokens(string line, char use_mode) {
+    bool special_case = false;
     vector <string> tokens;
     string no_comments_line, label = "", opcode = "", arg1 = "", arg2 = "";
     string aux; //TESTE
+
+
+    // cout << "linha >>-- '" << line << "'"  << endl;   //TESTESDGSGGEDRGEGERG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 
     stringstream ss_line(line); //transforma em stream
 
@@ -125,6 +175,10 @@ auto get_tokens(string line, char use_mode) {
     getline(ss_line, no_comments_line, ';');
     // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
     // !!!Fazer os corner case para caso tenha varios ';' na linha!!!
+
+
+    // cout << "no_comments_line >>-- '" << no_comments_line << "'"  << endl;   //TESTEDFGSDGSGFSDFGSDGFSDGSDFG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 
     stringstream ss_no_comments_line(no_comments_line); //transforma em stream
     // stringstream ss_no_comments_line_aux(no_comments_line);          //TESTE
@@ -160,7 +214,6 @@ auto get_tokens(string line, char use_mode) {
     ss_no_comments_line >> opcode;
     // cout << "opcode >>-- '" << opcode << "'"  << endl;   //TESTE
     // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
-    // !!!Fazer os corner case para caso tenha numero invalido de argumentos dependendo do opcode!!!
     // !!!Fazer os corner case para verificar se tem ',' caso seja COPY!!!
 
 
@@ -168,17 +221,31 @@ auto get_tokens(string line, char use_mode) {
     if (opcode != "STOP") {
         ss_no_comments_line >> arg1;
         // cout << "arg1 >>-- '" << arg1 << "'"  << endl;   //TESTE
-        arg1.erase(remove(arg1.begin(), arg1.end(), ','), arg1.end()); //remove a virgula caso ela esteja colada no arg1
+        if (arg1.find(',') == arg1.length()-1){ // se a virgula estiver na ultima posicao
+            arg1.erase(remove(arg1.begin(), arg1.end(), ','), arg1.end()); //remove a virgula caso ela esteja colada no arg1
+        }
+        else if (arg1.find(',') != string::npos) { // se a ',' nao estiver na ultima posicao do arg1 quer dizer que a instrucao estava sem espaco depois da ',' assim(COPY A,B), entao o arg1 ficou(A,B)
+            special_case = true;
+            arg2 = arg1.substr(arg1.find(',')).erase(0, 1); // pega tudo a partir da ',' e apaga a ','
+            arg1 = arg1.erase(arg1.find(','));
+            // cout << "CASO ESPECIAL #################################################" << endl;
+            // cout << "arg1 >>-- '" << arg1 << "'"  << endl;   //TESTE
+            // cout << "arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
+            // cout << "CASO ESPECIAL #################################################" << endl;
+        }
     }
 
 
-    // Pega arg2, caso seja COPY
-    if (opcode == "COPY") {
+    // Pega arg2, caso seja COPY e nao tenha ocorrido o caso de ser COPY A,B(sem espaco depois da virgula)
+    if (opcode == "COPY" && !special_case) {
         // FAZER A VERIFICAÇÃO SE TEM SOMENTE UMA ',' E SOMENTE UM ' ' ENTRE OS ARGUMENTOS
         ss_no_comments_line >> arg2; // pega a virgula, caso tenha varios espacos entre o arg1 e a virgula
         // cout << "virgula arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
         ss_no_comments_line >> arg2; // pega o argumento em si
         // cout << "arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
+        if (arg2.find(',') != string::npos) { // se ainda tiver ',' no arg2 provavelmente a ',' estava colada no arg2 a linha era (COPY A ,B)
+            arg2 = arg2.erase(0, 1); // apaga o primeiro caracter
+        }
     }
 
 
@@ -361,7 +428,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
     symbol = tokens[2];
     iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
     found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-    if (!found_symbol && tokens[2] != "" && is_valid_variable(tokens[2], operations_table)) { // se nao encontrou o simbolo e o simbolo nao eh uma string vazia e so possui caracteres validos
+    if (!found_symbol && tokens[2] != "" && is_valid_variable(tokens[2], operations_table, false)) { // se nao encontrou o simbolo e o simbolo nao eh uma string vazia e so possui caracteres validos
         // Erro de declaracao de rotulo ausente
         error_item.label = tokens[2];
         error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -373,7 +440,7 @@ vector <Item_errors_table> second_pass_labels(vector <string> tokens, map <strin
         symbol = tokens[3];
         iter = find_if(symbols_table.begin(), symbols_table.end(), [&symbol](const Item_symbols_table table_item){return table_item.symbol == symbol;});
         found_symbol = (iter != symbols_table.end()); // indica se o rotulo foi encontrado ou nao
-        if (!found_symbol && tokens[3] != "" && is_valid_variable(tokens[3], operations_table)) { // se nao encontrou o simbolo e o simbolo nao era uma string vazia e so possui caracteres validos
+        if (!found_symbol && tokens[3] != "" && is_valid_variable(tokens[3], operations_table, false)) { // se nao encontrou o simbolo e o simbolo nao era uma string vazia e so possui caracteres validos
             // Erro de declaracao de rotulo ausente
             error_item.label = tokens[3];
             error_item.message = "Erro SEMANTICO, declaracao de rotulo ausente";
@@ -505,7 +572,7 @@ int main(int argc, char const *argv[]) {
 
     char use_mode = argv[1][1];
 
-    bool found_symbol, if_is_valid = false, line_before_is_if = false, used_macro = false, reached_stop = false;
+    bool found_symbol, if_is_valid = false, line_before_is_if = false, used_macro = false, reached_stop = false, line_has_const = false;
 
     int position_counter = 0;
     int line_counter = 1;
@@ -771,27 +838,41 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
             tokens = get_tokens(line, use_mode);
-            // cout << "linha " << line_counter << ": --";    //TESTE
-            // cout << "label: '" << tokens[0] << "' --";     //TESTE
-            // cout << "opcode: '" << tokens[1] << "' --";    //TESTE
-            // cout << "arg1: '" << tokens[2] << "' --";      //TESTE
-            // cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
+            cout << "linha " << line_counter << ": --";    //TESTE
+            cout << "label: '" << tokens[0] << "' --";     //TESTE
+            cout << "opcode: '" << tokens[1] << "' --";    //TESTE
+            cout << "arg1: '" << tokens[2] << "' --";      //TESTE
+            cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
 
             // ################################################################################################################################################################################################################################################################################################################################################
             //TALVEZ FAZER AQUI A VERIFICACAO DOS TOKENS VALIDOS E GERAR OS ERROS LEXICOS DE TOKENS INVALIDOS
+            // FAZER NUMEROS DEPOIS DE CONST OU IF NAO DAREM ERRO, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
             // ################################################################################################################################################################################################################################################################################################################################################
 
             // Gera os erros de token invalido
+            if (tokens[1] == "CONST") {
+                line_has_const = true;
+            }
             for (int k = 0; k < 4; k++) {
-                if (!is_valid_variable(tokens[k], operations_table)) { // se o token nao for valido
-                    // Erro token invalido
-                    error_item.label = tokens[k];
-                    error_item.message = "Erro LEXICO, token invalido";
-                    error_item.line_number = line_counter;
-                    errors_table_o.push_back(error_item);
+                if (k != 1) { // se nao for o opcode, ou seja, se for rotulo ou operando
+                    if (!is_valid_variable(tokens[k], operations_table, line_has_const)) { // se o token nao for valido
+                        // Erro token invalido
+                        error_item.label = tokens[k];
+                        error_item.message = "Erro LEXICO, token invalido";
+                        error_item.line_number = line_counter;
+                        errors_table_o.push_back(error_item);
+                    }
+                }
+                else { // se for opcode
+                    if (!is_valid_instruction(tokens[k], operations_table)) { // se o token nao for valido
+                        // Erro token invalido
+                        error_item.label = tokens[k];
+                        error_item.message = "Erro LEXICO, token invalido";
+                        error_item.line_number = line_counter;
+                        errors_table_o.push_back(error_item);
+                    }
                 }
             }
-
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
@@ -831,9 +912,6 @@ int main(int argc, char const *argv[]) {
 
             // Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de declaracao de rotulo ausente
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
-            // ###############################################################################################################################################################################################################
-            // FAZER O VALOR QUE VEIO DO EQU SÓ NÃO DAR ERRO DE TOKEN INVALIDO(PORQUE SERIA UM NUMERO, O NOME DA VARIAVEL COMEÇARIA COM NUMERO) DEPOIS DE CONST OU IF, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
-            // ###############################################################################################################################################################################################################
 
             // Gera o codigo objeto e atualiza a tabela de erros caso ocorra erro de quantidade de operandos invalida
             errors_table_o = second_pass_instructions(tokens, operations_table, symbols_table, errors_table_o, output_file, &position_counter, &line_counter, reached_stop);
@@ -897,7 +975,7 @@ int main(int argc, char const *argv[]) {
     if (use_mode == 'o') {
         cout << "Tabela de erros -o:------------------------" << endl;
         for (auto error_iter : errors_table_o) {
-            cout << "Label: " << error_iter.label << " --- ";
+            cout << "Label: " << error_iter.label << "\t --- ";
             cout << "Mensagem: " << error_iter.message << " --- ";
             cout << "Linha do arquivo pre-processado: " << error_iter.line_number << endl;
         }
