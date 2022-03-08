@@ -239,7 +239,8 @@ vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int
 
 
     // Pega arg1, caso não seja STOP
-    if (opcode != "STOP") {
+    // if (opcode != "STOP") {
+    if (!opcode.empty()) {
         ss_no_comments_line >> arg1;
         // cout << "arg1 >>-- '" << arg1 << "'"  << endl;   //TESTE
         if (arg1.find(',') == arg1.length()-1){ // se a virgula estiver na ultima posicao
@@ -258,7 +259,8 @@ vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int
 
 
     // Pega arg2, caso seja COPY e nao tenha ocorrido o caso de ser COPY A,B(sem espaco depois da virgula)
-    if (opcode == "COPY" && !special_case) {
+    // if (opcode == "COPY" && !special_case) {
+    if (!special_case) {
         // FAZER A VERIFICAÇÃO SE TEM SOMENTE UMA ',' E SOMENTE UM ' ' ENTRE OS ARGUMENTOS
         ss_no_comments_line >> arg2; // pega a virgula, caso tenha varios espacos entre o arg1 e a virgula
         // cout << "virgula arg2 >>-- '" << arg2 << "'"  << endl;   //TESTE
