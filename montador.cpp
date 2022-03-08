@@ -273,12 +273,12 @@ vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int
 
     tokens.push_back(label);
     if (aux_tokens.size() > 1) { // se foi o caso de ter rotulo com quebra de linha depois do ':'
-        cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
-        cout << aux_tokens[1] << endl;
-        cout << aux_tokens[2] << endl;
-        cout << aux_tokens[3] << endl;
+        // cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl; //TESTE
+        // cout << aux_tokens.size() << endl;   //TESTE
+        // cout << aux_tokens[1] << endl;       //TESTE
+        // cout << aux_tokens[2] << endl;       //TESTE
+        // cout << aux_tokens[3] << endl;       //TESTE
 
-        
         tokens.push_back(aux_tokens[1]); // opcode
         tokens.push_back(aux_tokens[2]); // arg1
         tokens.push_back(aux_tokens[3]); // arg2
