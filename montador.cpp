@@ -159,12 +159,14 @@ bool is_valid_instruction(string label, map <string, Item_operations_table> oper
 }
 
 // Separa os tokens da linha
-auto get_tokens(string line, char use_mode) {
+vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int *line_counter) {
     bool special_case = false;
-    vector <string> tokens;
-    string no_comments_line, label = "", opcode = "", arg1 = "", arg2 = "";
+    vector <string> tokens, aux_tokens;
+    string no_comments_line, label = "", opcode = "", arg1 = "", arg2 = "", aux_line;
     string aux; //TESTE
 
+    // Inicializa o aux_tokens como vazio
+    aux_tokens.push_back("");
 
     // cout << "linha >>-- '" << line << "'"  << endl;   //TESTESDGSGGEDRGEGERG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -208,6 +210,25 @@ auto get_tokens(string line, char use_mode) {
 
     stringstream ss_no_comments_line(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1)); // pega o texto da linha que vem depois do rotulo e apaga o ':'
     // cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
+
+    // Para o caso de declarar o rotulo e quebrar a linha e continuar na proxima linha
+    string str(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1));
+    str.erase(remove(str.begin(), str.end(), ' '), str.end()); // remove todos os ' '
+    if(str.empty()) { // se nao tiver nada depois do ':'
+        getline(input_file, aux_line); // pega a proxima linha
+        (*line_counter)++;
+        //  Ignora se for uma linha em branco
+        if (is_blank_line(aux_line) || aux_line == " ") {
+            getline(input_file, aux_line); // pega a proxima linha
+            (*line_counter)++;
+        }
+        // Passa tudo para uppercase, para não ser case sensitive
+        transform(aux_line.begin(), aux_line.end(),aux_line.begin(), ::toupper);
+        // Pega os tokens
+        aux_tokens = get_tokens(aux_line, use_mode, input_file, line_counter);
+
+        cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
+    }
     }
 
     // Pega o opcode
@@ -248,11 +269,23 @@ auto get_tokens(string line, char use_mode) {
         }
     }
 
-
     tokens.push_back(label);
-    tokens.push_back(opcode);
-    tokens.push_back(arg1);
-    tokens.push_back(arg2);
+    if (aux_tokens.size() > 1) { // se foi o caso de ter rotulo com quebra de linha depois do ':'
+        cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
+        cout << aux_tokens[1] << endl;
+        cout << aux_tokens[2] << endl;
+        cout << aux_tokens[3] << endl;
+
+        
+        tokens.push_back(aux_tokens[1]); // opcode
+        tokens.push_back(aux_tokens[2]); // arg1
+        tokens.push_back(aux_tokens[3]); // arg2
+    }
+    else{
+        tokens.push_back(opcode);
+        tokens.push_back(arg1);
+        tokens.push_back(arg2);
+    }
     return tokens;
 }
 
@@ -645,7 +678,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pre processar EQU e IF
-            tokens = get_tokens(line, use_mode);
+            tokens = get_tokens(line, use_mode, file, &line_counter);
 
             // cout << "linha " << line_counter << ": --";     //TESTE
             // cout << "label: '" << tokens[0] << "' --";      //TESTE
@@ -701,7 +734,7 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
             if (if_is_valid && line_before_is_if && tokens[1] != "EQU") { // O IF anterior a essa linha foi valido, entao a linha sera usada no codigo
-                tokens = get_tokens(line, use_mode);
+                tokens = get_tokens(line, use_mode, file, &line_counter);
                 tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter);
                 ofile_equ_if << line << endl; // escreve no arquivo objeto sem os simbolos do EQU, so com os valores
             }
@@ -753,7 +786,7 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
 
             // Pre processar MACRO
-            tokens = get_tokens(line, use_mode);
+            tokens = get_tokens(line, use_mode, ifile_macro, &line_counter);
             line = format_line(tokens);
             if (tokens[1] == "MACRO"){    // se a linha for definicao de uma MACRO
                 macro_name = tokens[0];
@@ -768,7 +801,7 @@ int main(int argc, char const *argv[]) {
                     }
                     // Passa tudo para uppercase, para não ser case sensitive
                     transform(line.begin(), line.end(),line.begin(), ::toupper);
-                    tokens = get_tokens(line, use_mode);
+                    tokens = get_tokens(line, use_mode, ifile_macro, &line_counter);
                     line = format_line(tokens);
 
                     if (line.find("ENDMACRO") != string::npos) { // se for a linha que tiver ENDMACRO
@@ -791,7 +824,7 @@ int main(int argc, char const *argv[]) {
                 continue; // vai para a proxima linha
             }
 
-            else if (tokens[1] == macro_name) {   // se a linha tiver o rotulo da MACRO
+            else if (tokens[1] == macro_name && !tokens[1].empty()) {   // se a linha tiver o rotulo da MACRO
                 used_macro = true;
                 for (int i = 0; i < macro_lines.size(); i++) {
                     ofile_pre_processed_file << macro_lines[i] << endl; // adiciona as linhas da MACRO no arquivo pre processado
@@ -837,7 +870,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line, use_mode);
+            tokens = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
             cout << "linha " << line_counter << ": --";    //TESTE
             cout << "label: '" << tokens[0] << "' --";     //TESTE
             cout << "opcode: '" << tokens[1] << "' --";    //TESTE
@@ -908,7 +941,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line, use_mode);
+            tokens = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
 
             // Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de declaracao de rotulo ausente
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
@@ -945,17 +978,17 @@ int main(int argc, char const *argv[]) {
     //     cout << "Linha: " << symbol_iter.line << " --- ";
     //     cout << "Endereco: " << symbol_iter.address << endl;
     // }
-    // cout << "Tabela de simbolos:------------------------" << endl;
-    // for (auto symbol_iter : symbols_table) {
-    //     cout << "Simbolo: " << symbol_iter.symbol << " --- ";
-    //     cout << "Linha: " << symbol_iter.line << " --- ";
-    //     cout << "Valor: " << symbol_iter.value << " --- ";
-    //     cout << "Used: " << symbol_iter.used << " --- ";
-    //     cout << "Const: " << symbol_iter.is_const << " --- ";
-    //     cout << "Space: " << symbol_iter.is_space << " --- ";
-    //     cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
-    //     cout << "Endereco: " << symbol_iter.address << endl;
-    // }
+    cout << "Tabela de simbolos:------------------------" << endl;
+    for (auto symbol_iter : symbols_table) {
+        cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+        cout << "Linha: " << symbol_iter.line << " --- ";
+        cout << "Valor: " << symbol_iter.value << " --- ";
+        cout << "Used: " << symbol_iter.used << " --- ";
+        cout << "Const: " << symbol_iter.is_const << " --- ";
+        cout << "Space: " << symbol_iter.is_space << " --- ";
+        cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
+        cout << "Endereco: " << symbol_iter.address << endl;
+    }
     if (use_mode == 'p') {
         cout << "Tabela de erros -p:------------------------" << endl;
         for (auto error_iter : errors_table_p) {
@@ -983,8 +1016,8 @@ int main(int argc, char const *argv[]) {
 
     output_file.close();
 
-    remove("EQU_IF.asm");
-    remove("pre_processed.asm");
+    // remove("EQU_IF.asm");
+    // remove("pre_processed.asm");
 
     // if(remove("EQU_IF.asm") != 0 ){
     //     cout << "Error deleting file" << endl;
