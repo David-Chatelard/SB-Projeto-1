@@ -823,6 +823,15 @@ int main(int argc, char const *argv[]) {
                     line_counter++;
                     getline(ifile_macro, line);
 
+                    if (ifile_macro.eof()) { // chegou no final do arquivo e nao encontrou ENDMACRO
+                        // Adiciona o erro para falta de ENDMACRO
+                        error_item.label = macro_name;
+                        error_item.message = "Erro SEMANTICO, falta de ENDMACRO";
+                        error_item.line_number = line_counter;
+                        errors_table_m.push_back(error_item);
+                        break;
+                    }
+
                     //  Ignora se for uma linha em branco
                     if (is_blank_line(line) || line == " ") {
                         continue;
@@ -834,13 +843,6 @@ int main(int argc, char const *argv[]) {
 
                     if (line.find("ENDMACRO") != string::npos) { // se for a linha que tiver ENDMACRO
                         break; // termina o while
-                    }
-                    if (ifile_macro.eof()) { // chegou no final do arquivo e nao encontrou ENDMACRO
-                        // Adiciona o erro para falta de ENDMACRO
-                        error_item.label = macro_name;
-                        error_item.message = "Erro SEMANTICO, falta de ENDMACRO";
-                        error_item.line_number = line_counter;
-                        errors_table_m.push_back(error_item);
                     }
 
                     macro_lines.push_back(line); // adiciona a linha no vetor da MACRO
@@ -890,6 +892,7 @@ int main(int argc, char const *argv[]) {
         position_counter = 0;
         line_counter = 1;
         while (getline(ifile_pre_processed_file, line)){
+            line_has_const = false;
             //  Ignora se for uma linha em branco
             if (is_blank_line(line) || line == " ") {
                 line_counter++;
@@ -899,20 +902,15 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
             tie(tokens, has_2_labels) = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
-            cout << "linha " << line_counter << ": --";    //TESTE
-            cout << "label: '" << tokens[0] << "' --";     //TESTE
-            cout << "opcode: '" << tokens[1] << "' --";    //TESTE
-            cout << "arg1: '" << tokens[2] << "' --";      //TESTE
-            cout << "arg2: '" << tokens[3] << "' --"; //TESTE
-            cout << "size: '" << tokens.size() << "'" << endl; //TESTE
-            if (tokens.size() > 4){
-                cout << "label extra: '" << tokens[4] << "'" << endl; //TESTE
-            }
-
-            // ################################################################################################################################################################################################################################################################################################################################################
-            //TALVEZ FAZER AQUI A VERIFICACAO DOS TOKENS VALIDOS E GERAR OS ERROS LEXICOS DE TOKENS INVALIDOS
-            // FAZER NUMEROS DEPOIS DE CONST OU IF NAO DAREM ERRO, NOS OUTROS CASOS DA ERRO(TIPO EM ADD, ETC)
-            // ################################################################################################################################################################################################################################################################################################################################################
+            // cout << "linha " << line_counter << ": --";    //TESTE
+            // cout << "label: '" << tokens[0] << "' --";     //TESTE
+            // cout << "opcode: '" << tokens[1] << "' --";    //TESTE
+            // cout << "arg1: '" << tokens[2] << "' --";      //TESTE
+            // cout << "arg2: '" << tokens[3] << "' --"; //TESTE
+            // cout << "size: '" << tokens.size() << "'" << endl; //TESTE
+            // if (tokens.size() > 4){
+            //     cout << "label extra: '" << tokens[4] << "'" << endl; //TESTE
+            // }
 
             // Gera os erros de token invalido
             if (tokens[1] == "CONST") {
@@ -1021,17 +1019,17 @@ int main(int argc, char const *argv[]) {
     //     cout << "Linha: " << symbol_iter.line << " --- ";
     //     cout << "Endereco: " << symbol_iter.address << endl;
     // }
-    cout << "Tabela de simbolos:------------------------" << endl;
-    for (auto symbol_iter : symbols_table) {
-        cout << "Simbolo: " << symbol_iter.symbol << " --- ";
-        cout << "Linha: " << symbol_iter.line << " --- ";
-        cout << "Valor: " << symbol_iter.value << " --- ";
-        cout << "Used: " << symbol_iter.used << " --- ";
-        cout << "Const: " << symbol_iter.is_const << " --- ";
-        cout << "Space: " << symbol_iter.is_space << " --- ";
-        cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
-        cout << "Endereco: " << symbol_iter.address << endl;
-    }
+    // cout << "Tabela de simbolos:------------------------" << endl;
+    // for (auto symbol_iter : symbols_table) {
+    //     cout << "Simbolo: " << symbol_iter.symbol << " --- ";
+    //     cout << "Linha: " << symbol_iter.line << " --- ";
+    //     cout << "Valor: " << symbol_iter.value << " --- ";
+    //     cout << "Used: " << symbol_iter.used << " --- ";
+    //     cout << "Const: " << symbol_iter.is_const << " --- ";
+    //     cout << "Space: " << symbol_iter.is_space << " --- ";
+    //     cout << "Before STOP: " << symbol_iter.before_stop << " --- ";
+    //     cout << "Endereco: " << symbol_iter.address << endl;
+    // }
     if (use_mode == 'p') {
         cout << "Tabela de erros -p:------------------------" << endl;
         for (auto error_iter : errors_table_p) {

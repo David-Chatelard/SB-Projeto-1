@@ -10,13 +10,13 @@ troCA: mACro
 coPY L1,   B;asdasd
 MulT l2
 enDmAcrO
-n1:ConST -10;;  ;  asassad
+n1:  C1:ConST -10;;  ;  asassad
 n2   :spaCE   ;    asdasdasd
 n3:  SpAce  ;asdasd
 n4  :   coNSt 20;sdfsdf
 iF EOq   ; asdasd asd
 loAD dale;asdasd
-COPY DALE, FON ; ASDADWEE
+COPY jMpP, FON ; ASDADWEE
 cpY dale, fon;assg
 L1: DIV DOIS; 42asd
 L2   : ADD n1; 2fsdf
