@@ -22,6 +22,8 @@ IDE: Visual Studio Code
 #include<stdio.h>
 
 using namespace std;
+using std::cout;
+using std::cin;
 
 // Declaracao das classes
 class Code_line {
@@ -159,40 +161,29 @@ bool is_valid_instruction(string label, map <string, Item_operations_table> oper
 }
 
 // Separa os tokens da linha
-vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int *line_counter) {
-    bool special_case = false;
-    vector <string> tokens, aux_tokens;
+tuple<vector <string>, bool> get_tokens(string line, char use_mode, ifstream &input_file, int *line_counter) {
+    bool special_case = false, has_2_labels = false;
+    vector <string> tokens, aux_tokens, aux_tokens2;
     string no_comments_line, label = "", opcode = "", arg1 = "", arg2 = "", aux_line;
     string aux; //TESTE
 
     // Inicializa o aux_tokens como vazio
     aux_tokens.push_back("");
-
-    // cout << "linha >>-- '" << line << "'"  << endl;   //TESTESDGSGGEDRGEGERG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
+    aux_tokens2.push_back("");
 
     stringstream ss_line(line); //transforma em stream
 
     // Remove os comentarios
     getline(ss_line, no_comments_line, ';');
-    // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
-    // !!!Fazer os corner case para caso tenha varios ';' na linha!!!
-
-
-    // cout << "no_comments_line >>-- '" << no_comments_line << "'"  << endl;   //TESTEDFGSDGSGFSDFGSDGFSDGSDFG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
 
     stringstream ss_no_comments_line(no_comments_line); //transforma em stream
     // stringstream ss_no_comments_line_aux(no_comments_line);          //TESTE
 
     // Pega o rotulo
-    // TEM QUE FAZER PARA O CASO DE TER A DECLARAÇÃO DO RÓTULO E DEPOIS UMA QUEBRA DE LINHA PARA O RESTO
     if (no_comments_line.find(':') != string::npos){ // se tiver rotulo
         getline(ss_no_comments_line, label, ':'); //bota tudo que vem antes de ':' em label
         // ##################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
         // !!!Fazer os corner case para caso tenha vários ':' na mesma linha varios rotulos na mesma linha (por exemplo L1:L2: ADD B)!!!
-        // !!!Fazer os corner case para caso tenha quebra de linha para o rótulo!!!
-        // !!!Fazer os corner case para caso tenha rotulo com nome invalido(com numero no comeco, caracteres invalidos, palavra reservada)!!!
 
         stringstream ss_label(label); //transforma em stream
         ss_label >> label; //retira os espacos em branco do rotulo
@@ -208,27 +199,38 @@ vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int
         // cout << "linha depois de 4 >>-- '" << aux << "'"  << endl;   //TESTE
         // ss_no_comments_line_aux >> aux;                              //TESTE
 
-    stringstream ss_no_comments_line(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1)); // pega o texto da linha que vem depois do rotulo e apaga o ':'
-    // cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
+        stringstream ss_no_comments_line(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1)); // pega o texto da linha que vem depois do rotulo e apaga o ':'
+        // cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
 
-    // Para o caso de declarar o rotulo e quebrar a linha e continuar na proxima linha
-    string str(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1));
-    str.erase(remove(str.begin(), str.end(), ' '), str.end()); // remove todos os ' '
-    if(str.empty()) { // se nao tiver nada depois do ':'
-        getline(input_file, aux_line); // pega a proxima linha
-        (*line_counter)++;
-        //  Ignora se for uma linha em branco
-        if (is_blank_line(aux_line) || aux_line == " ") {
+        // Para o caso de declarar o rotulo e quebrar a linha e continuar na proxima linha
+        string str(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1));
+        str.erase(remove(str.begin(), str.end(), ' '), str.end()); // remove todos os ' '
+        if(str.empty()) { // se nao tiver nada depois do ':'
             getline(input_file, aux_line); // pega a proxima linha
             (*line_counter)++;
-        }
-        // Passa tudo para uppercase, para não ser case sensitive
-        transform(aux_line.begin(), aux_line.end(),aux_line.begin(), ::toupper);
-        // Pega os tokens
-        aux_tokens = get_tokens(aux_line, use_mode, input_file, line_counter);
+            //  Ignora se for uma linha em branco
+            if (is_blank_line(aux_line) || aux_line == " ") {
+                getline(input_file, aux_line); // pega a proxima linha
+                (*line_counter)++;
+            }
+            // Passa tudo para uppercase, para não ser case sensitive
+            transform(aux_line.begin(), aux_line.end(),aux_line.begin(), ::toupper);
+            // Pega os tokens
+            tie(aux_tokens, has_2_labels) = get_tokens(aux_line, use_mode, input_file, line_counter);
 
-        cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
+            // std::cout << "linha depois do rotulo >>-- '" << ss_no_comments_line.str() << "'"  << endl;   //TESTE
+        }
+        else if (str.find(':') != string::npos){ // se tiver rotulo depois do primeiro rotulo
+            has_2_labels = true;
+        }
     }
+
+    if (has_2_labels) { // se tiver 2 rotulos na mesma linha
+        string str2(no_comments_line.substr(no_comments_line.find(':')).erase(0, 1)); // pega o texto da linha que vem depois do rotulo e apaga o ':'
+        // cout << "linha depois do segundo rotulo >>-- '" << str2 << "'"  << endl;   //TESTE
+
+        tie(aux_tokens2, has_2_labels) = get_tokens(str2, use_mode, input_file, line_counter);
+        has_2_labels = true;
     }
 
     // Pega o opcode
@@ -283,12 +285,52 @@ vector <string> get_tokens(string line, char use_mode, ifstream &input_file, int
         tokens.push_back(aux_tokens[2]); // arg1
         tokens.push_back(aux_tokens[3]); // arg2
     }
+    else if (has_2_labels) {
+        // cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl; //TESTE
+        // cout << aux_tokens2.size() << endl;   //TESTE
+        // cout << aux_tokens2[0] << endl;       //TESTE
+        // cout << aux_tokens2[1] << endl;       //TESTE
+        // cout << aux_tokens2[2] << endl;       //TESTE
+        // cout << aux_tokens2[3] << endl;       //TESTE
+
+        tokens.push_back(aux_tokens2[1]); // opcode
+        tokens.push_back(aux_tokens2[2]); // arg1
+        tokens.push_back(aux_tokens2[3]); // arg2
+        tokens.push_back(aux_tokens2[0]); // segundo rotulo da linha
+    }
     else{
         tokens.push_back(opcode);
         tokens.push_back(arg1);
         tokens.push_back(arg2);
     }
-    return tokens;
+    return {tokens, has_2_labels};
+}
+
+// Remove os espacos em branco desnecessarios da linha
+string format_line(vector <string> tokens, bool has_2_labels){
+    if (has_2_labels) {
+        if (tokens[3].empty()){ // nao tem arg2
+            return tokens[0] + ':' + tokens[4] + ':' + ' ' + tokens[1] + ' ' + tokens[2];
+        }
+        // tem arg2
+        return tokens[0] + ':' + tokens[4] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
+    }
+    else{
+        if (tokens[0].empty()) { // linha sem rotulo
+            if (tokens[3].empty()){ // nao tem arg2
+                return tokens[1] + ' ' + tokens[2];
+            }
+            // tem arg2
+            return tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
+        }
+        else{ //linha com rotulo
+            if (tokens[3].empty()){ // nao tem arg2
+                return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2];
+            }
+            // tem arg2
+            return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
+        }
+    }
 }
 
 // Adiciona os rotulos dos EQU na tabela de simbolos da passagem 0 e atualiza a tabela de erros caso ocorra algum erro envolvendo rotulos
@@ -324,7 +366,7 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> zero_pass_labels_
 }
 
 // Substitui os simbolos dos rotulos por seus valores
-tuple<string, vector <Item_symbols_table>> write_label(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter) {
+tuple<string, vector <Item_symbols_table>> write_label(vector <string> tokens, map <string, Item_operations_table> operations_table, vector <Item_symbols_table> symbols_table, vector <Item_errors_table> errors_table, int *position_counter, int *line_counter, bool has_2_labels) {
     int i;
 
     if (!tokens[2].empty()) { // possui arg1
@@ -345,38 +387,22 @@ tuple<string, vector <Item_symbols_table>> write_label(vector <string> tokens, m
         }
     }
 
-    if (tokens[0].empty()) { // linha sem rotulo
-        if (tokens[3].empty()){ // nao tem arg2
-            return {tokens[1] + ' ' + tokens[2], symbols_table};
-        }
-        // tem arg2
-        return {tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3], symbols_table};
-    }
-    else{ //linha com rotulo
-        if (tokens[3].empty()){ // nao tem arg2
-            return {tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2], symbols_table};
-        }
-        // tem arg2
-        return {tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3], symbols_table};
-    }
-}
+    return {format_line(tokens, has_2_labels), symbols_table};
 
-// Remove os espacos em branco desnecessarios da linha
-string format_line(vector <string> tokens){
-    if (tokens[0].empty()) { // linha sem rotulo
-        if (tokens[3].empty()){ // nao tem arg2
-            return tokens[1] + ' ' + tokens[2];
-        }
-        // tem arg2
-        return tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
-    }
-    else{ //linha com rotulo
-        if (tokens[3].empty()){ // nao tem arg2
-            return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2];
-        }
-        // tem arg2
-        return tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3];
-    }
+    // if (tokens[0].empty()) { // linha sem rotulo
+    //     if (tokens[3].empty()){ // nao tem arg2
+    //         return {tokens[1] + ' ' + tokens[2], symbols_table};
+    //     }
+    //     // tem arg2
+    //     return {tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3], symbols_table};
+    // }
+    // else{ //linha com rotulo
+    //     if (tokens[3].empty()){ // nao tem arg2
+    //         return {tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2], symbols_table};
+    //     }
+    //     // tem arg2
+    //     return {tokens[0] + ':' + ' ' + tokens[1] + ' ' + tokens[2] + ',' + ' ' + tokens[3], symbols_table};
+    // }
 }
 
 // Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
@@ -607,7 +633,7 @@ int main(int argc, char const *argv[]) {
 
     char use_mode = argv[1][1];
 
-    bool found_symbol, if_is_valid = false, line_before_is_if = false, used_macro = false, reached_stop = false, line_has_const = false;
+    bool found_symbol, if_is_valid=false, line_before_is_if=false, used_macro=false, reached_stop=false, line_has_const=false, has_2_labels=false;
 
     int position_counter = 0;
     int line_counter = 1;
@@ -680,7 +706,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pre processar EQU e IF
-            tokens = get_tokens(line, use_mode, file, &line_counter);
+            tie(tokens, has_2_labels) = get_tokens(line, use_mode, file, &line_counter);
 
             // cout << "linha " << line_counter << ": --";     //TESTE
             // cout << "label: '" << tokens[0] << "' --";      //TESTE
@@ -694,7 +720,7 @@ int main(int argc, char const *argv[]) {
             }
             else{ // se a linha nao tiver EQU
                 // Substitui os simbolos dos EQU por seus valores
-                tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter);
+                tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter, has_2_labels);
                 // ofile_equ_if << line << endl; // escreve no arquivo objeto sem os simbolos do EQU, so com os valores BOTEI LA EM BAIXO
             }
 
@@ -736,8 +762,8 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
             if (if_is_valid && line_before_is_if && tokens[1] != "EQU") { // O IF anterior a essa linha foi valido, entao a linha sera usada no codigo
-                tokens = get_tokens(line, use_mode, file, &line_counter);
-                tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter);
+                tie(tokens, has_2_labels) = get_tokens(line, use_mode, file, &line_counter);
+                tie(line, symbols_table_equ_if) = write_label(tokens, operations_table, symbols_table_equ_if, errors_table_p, &position_counter, &line_counter, has_2_labels);
                 ofile_equ_if << line << endl; // escreve no arquivo objeto sem os simbolos do EQU, so com os valores
             }
             if (!line_before_is_if && tokens[1] != "EQU") { // Nao tinha IF antes dessa linha
@@ -788,8 +814,8 @@ int main(int argc, char const *argv[]) {
             transform(line.begin(), line.end(),line.begin(), ::toupper);
 
             // Pre processar MACRO
-            tokens = get_tokens(line, use_mode, ifile_macro, &line_counter);
-            line = format_line(tokens);
+            tie(tokens, has_2_labels) = get_tokens(line, use_mode, ifile_macro, &line_counter);
+            line = format_line(tokens, has_2_labels);
             if (tokens[1] == "MACRO"){    // se a linha for definicao de uma MACRO
                 macro_name = tokens[0];
                 macro_line = line_counter;
@@ -803,8 +829,8 @@ int main(int argc, char const *argv[]) {
                     }
                     // Passa tudo para uppercase, para não ser case sensitive
                     transform(line.begin(), line.end(),line.begin(), ::toupper);
-                    tokens = get_tokens(line, use_mode, ifile_macro, &line_counter);
-                    line = format_line(tokens);
+                    tie(tokens, has_2_labels) = get_tokens(line, use_mode, ifile_macro, &line_counter);
+                    line = format_line(tokens, has_2_labels);
 
                     if (line.find("ENDMACRO") != string::npos) { // se for a linha que tiver ENDMACRO
                         break; // termina o while
@@ -872,12 +898,16 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
+            tie(tokens, has_2_labels) = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
             cout << "linha " << line_counter << ": --";    //TESTE
             cout << "label: '" << tokens[0] << "' --";     //TESTE
             cout << "opcode: '" << tokens[1] << "' --";    //TESTE
             cout << "arg1: '" << tokens[2] << "' --";      //TESTE
-            cout << "arg2: '" << tokens[3] << "'" << endl; //TESTE
+            cout << "arg2: '" << tokens[3] << "' --"; //TESTE
+            cout << "size: '" << tokens.size() << "'" << endl; //TESTE
+            if (tokens.size() > 4){
+                cout << "label extra: '" << tokens[4] << "'" << endl; //TESTE
+            }
 
             // ################################################################################################################################################################################################################################################################################################################################################
             //TALVEZ FAZER AQUI A VERIFICACAO DOS TOKENS VALIDOS E GERAR OS ERROS LEXICOS DE TOKENS INVALIDOS
@@ -888,7 +918,8 @@ int main(int argc, char const *argv[]) {
             if (tokens[1] == "CONST") {
                 line_has_const = true;
             }
-            for (int k = 0; k < 4; k++) {
+            // Gera os erros de token invalido
+            for (int k = 0; k < tokens.size(); k++) {
                 if (k != 1) { // se nao for o opcode, ou seja, se for rotulo ou operando
                     if (!is_valid_variable(tokens[k], operations_table, line_has_const)) { // se o token nao for valido
                         // Erro token invalido
@@ -908,6 +939,16 @@ int main(int argc, char const *argv[]) {
                     }
                 }
             }
+
+            // Gera os erros de dois rotulos na mesma linha
+            if (has_2_labels) {
+                // Erro de dois rotulos na mesma linha
+                error_item.label = tokens[4];
+                error_item.message = "Erro SINTATICO, dois rotulos na mesma linha";
+                error_item.line_number = line_counter;
+                errors_table_o.push_back(error_item);
+            }
+
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
@@ -943,7 +984,7 @@ int main(int argc, char const *argv[]) {
             // Passa tudo para uppercase, para não ser case sensitive
             transform(line.begin(), line.end(),line.begin(), ::toupper);
             // Pega os tokens da linha
-            tokens = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
+            tie(tokens, has_2_labels) = get_tokens(line, use_mode, ifile_pre_processed_file, &line_counter);
 
             // Procura os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de declaracao de rotulo ausente
             errors_table_o = second_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter);
