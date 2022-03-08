@@ -432,7 +432,9 @@ tuple<vector <Item_symbols_table>, vector <Item_errors_table>> first_pass_labels
                 symbol_item.line = *line_counter;
                 if (tokens[1] == "CONST") {
                     symbol_item.is_const = true;
-                    symbol_item.value = stoi(tokens[2]);
+                    if (!tokens[2].empty()){
+                        symbol_item.value = stoi(tokens[2]);
+                    }
                 }
                 if (tokens[1] == "SPACE") {
                     symbol_item.is_space = true;
@@ -521,7 +523,7 @@ vector <Item_errors_table> second_pass_instructions(vector <string> tokens, map 
     vector <Item_symbols_table>::iterator iter;
     Item_errors_table error_item;    
     string symbol, opcode = tokens[1], arg1 = tokens[2], arg2 = tokens[3];
-    
+
     if (operations_table.count(opcode)) { // se o opcode estiver na tabela de operacoes
         *position_counter += operations_table.at(opcode).memory_space; // atualiza o contador de posicao
 
@@ -946,7 +948,6 @@ int main(int argc, char const *argv[]) {
                 error_item.line_number = line_counter;
                 errors_table_o.push_back(error_item);
             }
-
 
             //  Adiciona os rotulos na tabela de simbolos e atualiza a tabela de erros caso ocorra erro de rotulo ja definido
             tie(symbols_table, errors_table_o) = first_pass_labels(tokens, operations_table, symbols_table, errors_table_o, &position_counter, &line_counter, reached_stop);
